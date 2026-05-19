@@ -57,6 +57,49 @@ const register = async (data) => {
   return user;
 };
 
+const verifyOtp = async (data) => {
+
+  const user = await prisma.user.findUnique({
+    where: {
+      email: data.email,
+    },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  if (user.isVerified) {
+    throw new Error("User already verified");
+  }
+
+  if (user.otp !== data.otp) {
+    throw new Error("Invalid OTP");
+  }
+
+  // check expiry
+  if (new Date() > user.otpExpiry) {
+    throw new Error("OTP expired");
+  }
+
+  // update user
+  await prisma.user.update({
+    where: {
+      email: data.email,
+    },
+    data: {
+      isVerified: true,
+      otp: null,
+      otpExpiry: null,
+    },
+  });
+
+  return {
+    message: "OTP verified successfully",
+  };
+};
+
 module.exports = {
   register,
+  verifyOtp,
 };
