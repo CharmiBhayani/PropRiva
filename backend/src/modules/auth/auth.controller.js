@@ -49,7 +49,52 @@ const verifyOtp = async(req,res)=>{
 
 };
 
+const login = async (req, res) => {
+
+  try {
+
+    const data = await authService.login(
+      req.body
+    );
+
+    res.cookie("token", data.token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      user: data.user,
+    });
+
+  } catch (error) {
+
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+
+  }
+
+};
+
+const logout = async (req, res) => {
+
+  res.clearCookie("token");
+
+  res.status(200).json({
+    success: true,
+    message: "Logout successful",
+  });
+
+};
+
 module.exports = {
   register,
   verifyOtp,
+  login,
+  logout,
 };

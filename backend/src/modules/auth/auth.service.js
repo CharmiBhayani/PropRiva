@@ -1,5 +1,6 @@
 const prisma = require("../../config/prisma");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const sendEmail = require("../../utils/sendEmail");
 
 const register = async (data) => {
@@ -99,7 +100,51 @@ const verifyOtp = async (data) => {
   };
 };
 
+const login = async (data) => {
+
+  const user = await prisma.user.findUnique({
+    where: {
+      email: data.email,
+    },
+  });
+
+  if (!user) {
+    throw new Error("Invalid credentials");
+  }
+
+  if (!user.isVerified) {
+    throw new Error("Please verify your email");
+  }
+
+  const isMatch = await bcrypt.compare(
+    data.password,
+    user.password
+  );
+
+  if (!isMatch) {
+    throw new Error("Invalid credentials");
+  }
+
+  // generate jwt
+  const token = jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "7d",
+    }
+  );
+
+  return {
+    token,
+    user,
+  };
+};
+
 module.exports = {
   register,
   verifyOtp,
+  login,
 };
