@@ -7,6 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+enum LeaseStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
 model User {
   id            Int      @id @default(autoincrement())
 
@@ -19,11 +29,57 @@ model User {
   occupation    String?
   dob           DateTime?
 
+  role          Role     @default(USER)
+
   isVerified    Boolean  @default(false)
+
+  ownedProperties Property[] @relation("OwnerProperties")
+
+  leases Lease[]
 
   otp           String?
   otpExpiry     DateTime?
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model Property {
+  id            Int      @id @default(autoincrement())
+
+  title         String
+  description   String?
+
+  address       String
+  city          String
+  state         String
+  pincode       String
+
+  rentAmount    Float
+
+  ownerId       Int
+
+  owner User @relation("OwnerProperties", fields: [ownerId], references: [id])
+  leases        Lease[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Lease {
+  id            Int      @id @default(autoincrement())
+
+  propertyId    Int
+  tenantId      Int
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+ tenant User @relation(fields: [tenantId], references: [id])
+
+  status        LeaseStatus @default(PENDING)
+
+  startDate     DateTime?
+  endDate       DateTime?
+
+  createdAt     DateTime @default(now())
 }
