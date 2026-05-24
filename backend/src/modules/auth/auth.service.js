@@ -144,8 +144,72 @@ const login = async (data) => {
   };
 };
 
+const resendOtp = async (
+  email
+) => {
+
+  const user =
+    await prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  if (user.isVerified) {
+    throw new Error(
+      "User already verified"
+    );
+  }
+
+  // generate new otp
+  const otp = Math.floor(
+    100000 + Math.random() * 900000
+  ).toString();
+
+  // new expiry
+  const otpExpiry =
+    new Date(Date.now() + 5 * 60 * 1000);
+
+  // update user
+  await prisma.user.update({
+    where: {
+      email,
+    },
+
+    data: {
+      otp,
+      otpExpiry,
+    },
+  });
+
+  // send email
+  await sendEmail(
+    user.email,
+
+    "Resend OTP",
+
+    `
+Your new OTP is:
+
+${otp}
+
+This OTP will expire in 5 minutes.
+`
+  );
+
+  return {
+    message:
+      "OTP resent successfully",
+    };
+};
+
 module.exports = {
   register,
   verifyOtp,
   login,
+  resendOtp,
 };

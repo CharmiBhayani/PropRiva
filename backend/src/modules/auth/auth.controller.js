@@ -92,9 +92,38 @@ const logout = async (req, res) => {
 
 };
 
+const resendOtp = async (
+  req,
+  res
+) => {
+
+  try {
+
+    const result =
+      await authService.resendOtp(
+        req.body.email
+      );
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+
+  } catch (error) {
+
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+
+  }
+
+};
+
 module.exports = {
   register,
   verifyOtp,
   login,
   logout,
+  resendOtp,
 };
