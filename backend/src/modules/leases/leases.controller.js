@@ -31,6 +31,66 @@ const inviteTenant = async (
 
 };
 
+const approveLease = async (
+  req,
+  res
+) => {
+
+  try {
+
+    const lease =
+      await leaseService.approveLease(
+        req.params.id,
+        req.user.id
+      );
+
+    res.status(200).json({
+      success: true,
+      lease,
+    });
+
+  } catch (error) {
+
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+
+  }
+
+};
+
+const rejectLease = async (
+  req,
+  res
+) => {
+
+  try {
+
+    const lease =
+      await leaseService.rejectLease(
+        req.params.id,
+        req.user.id
+      );
+
+    res.status(200).json({
+      success: true,
+      lease,
+    });
+
+  } catch (error) {
+
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+
+  }
+
+};
+
 module.exports = {
   inviteTenant,
+  approveLease,
+  rejectLease,
 };

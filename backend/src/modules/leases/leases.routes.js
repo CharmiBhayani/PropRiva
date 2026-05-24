@@ -16,4 +16,16 @@ router.post(
   leaseController.inviteTenant
 );
 
+router.post(
+  "/approve/:id",
+  authMiddleware,
+  leaseController.approveLease
+);
+
+router.post(
+  "/reject/:id",
+  authMiddleware,
+  leaseController.rejectLease
+);
+
 module.exports = router;

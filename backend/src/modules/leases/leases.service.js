@@ -5,6 +5,7 @@ const sendEmail = require(
   "../../utils/sendEmail"
 );
 
+
 const inviteTenant = async (
   data,
   landlordId
@@ -83,6 +84,91 @@ to approve or reject this request.
     return lease;
     };
 
+
+const approveLease = async (
+  leaseId,
+  tenantId
+) => {
+
+  const lease =
+    await prisma.lease.findUnique({
+      where: {
+        id: Number(leaseId),
+      },
+    });
+
+  if (!lease) {
+    throw new Error("Lease not found");
+  }
+
+  // ensure correct tenant
+  if (lease.tenantId !== tenantId) {
+    throw new Error("Unauthorized");
+  }
+
+  // ensure pending
+  if (lease.status !== "PENDING") {
+    throw new Error(
+      "Lease already processed"
+    );
+  }
+
+  const updatedLease =
+    await prisma.lease.update({
+      where: {
+        id: lease.id,
+      },
+
+      data: {
+        status: "ACTIVE",
+      },
+    });
+
+  return updatedLease;
+};
+
+const rejectLease = async (
+  leaseId,
+  tenantId
+) => {
+
+  const lease =
+    await prisma.lease.findUnique({
+      where: {
+        id: Number(leaseId),
+      },
+    });
+
+  if (!lease) {
+    throw new Error("Lease not found");
+  }
+
+  if (lease.tenantId !== tenantId) {
+    throw new Error("Unauthorized");
+  }
+
+  if (lease.status !== "PENDING") {
+    throw new Error(
+      "Lease already processed"
+    );
+  }
+
+  const updatedLease =
+    await prisma.lease.update({
+      where: {
+        id: lease.id,
+      },
+
+      data: {
+        status: "REJECTED",
+      },
+    });
+
+  return updatedLease;
+};
+
 module.exports = {
   inviteTenant,
+  approveLease,
+  rejectLease,
 };
