@@ -27,6 +27,53 @@ const createProperty = async (
   return property;
 };
 
+const getMyProperties = async (
+  ownerId
+) => {
+
+  return await prisma.property.findMany({
+    where: {
+      ownerId,
+    },
+
+    include: {
+      leases: true,
+    },
+  });
+
+};
+
+const getPropertyById = async (
+  propertyId
+) => {
+
+  const property =
+    await prisma.property.findUnique({
+
+      where: {
+        id: propertyId,
+      },
+
+      include: {
+        owner: true,
+
+        leases: {
+          include: {
+            tenant: true,
+          },
+        },
+      },
+    });
+
+  if (!property) {
+    throw new Error("Property not found");
+  }
+
+  return property;
+};
+
 module.exports = {
   createProperty,
+  getMyProperties,
+  getPropertyById,
 };

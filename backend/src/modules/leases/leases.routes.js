@@ -28,4 +28,16 @@ router.post(
   leaseController.rejectLease
 );
 
+router.get(
+  "/my-leases",
+  authMiddleware,
+  leaseController.getMyLeases
+);
+
+router.get(
+  "/pending",
+  authMiddleware,
+  leaseController.getPendingInvites
+);
+
 module.exports = router;

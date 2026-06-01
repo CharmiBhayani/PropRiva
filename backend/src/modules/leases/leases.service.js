@@ -167,8 +167,50 @@ const rejectLease = async (
   return updatedLease;
 };
 
+const getMyLeases = async (
+  tenantId
+) => {
+
+  return await prisma.lease.findMany({
+
+    where: {
+      tenantId,
+      status: "ACTIVE",
+    },
+
+    include: {
+      property: true,
+    },
+  });
+
+};
+
+const getPendingInvites = async (
+  tenantId
+) => {
+
+  return await prisma.lease.findMany({
+
+    where: {
+      tenantId,
+      status: "PENDING",
+    },
+
+    include: {
+      property: {
+        include: {
+          owner: true,
+        },
+      },
+    },
+  });
+
+};
+
 module.exports = {
   inviteTenant,
   approveLease,
   rejectLease,
+  getMyLeases,
+  getPendingInvites,
 };
