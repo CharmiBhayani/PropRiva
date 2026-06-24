@@ -1,0 +1,6 @@
+M3 was not trained because no ZHVI ZIP time-series data was available.
+To enable M3:
+  1. Download Zillow ZHVI ZIP CSV from:
+     https://www.zillow.com/research/data/
+  2. Place it at data/zillow/zhvi_zip.csv
+  3. Re-run:  python pipeline/train_pipeline.py
