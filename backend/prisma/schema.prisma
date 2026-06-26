@@ -17,6 +17,19 @@ enum LeaseStatus {
   REJECTED
 }
 
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+enum MaintenanceStatus {
+  PENDING
+  APPROVED_PAID_DIRECTLY
+  APPROVED_RENT_ADJUSTED
+  REJECTED
+}
+
 model User {
   id            Int      @id @default(autoincrement())
 
@@ -36,6 +49,7 @@ model User {
   ownedProperties Property[] @relation("OwnerProperties")
 
   leases Lease[]
+  notifications Notification[]
 
   otp           String?
   otpExpiry     DateTime?
@@ -74,12 +88,56 @@ model Lease {
 
   property Property @relation(fields: [propertyId], references: [id])
 
- tenant User @relation(fields: [tenantId], references: [id])
+  tenant User @relation(fields: [tenantId], references: [id])
 
   status        LeaseStatus @default(PENDING)
 
   startDate     DateTime?
   endDate       DateTime?
 
+  rentCredits   Float       @default(0)
+  payments      Payment[]
+  maintenanceRequests MaintenanceRequest[]
+
   createdAt     DateTime @default(now())
+}
+
+model Payment {
+  id                 Int           @id @default(autoincrement())
+  leaseId            Int
+  lease              Lease         @relation(fields: [leaseId], references: [id])
+  amount             Float
+  status             PaymentStatus @default(PENDING)
+  razorpayOrderId    String?       @unique
+  razorpayPaymentId  String?       @unique
+  razorpaySignature  String?
+  paidAt             DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+}
+
+model MaintenanceRequest {
+  id              Int               @id @default(autoincrement())
+  leaseId         Int
+  lease           Lease             @relation(fields: [leaseId], references: [id])
+  title           String
+  description     String
+  vendorName      String
+  invoiceNo       String?
+  billCode        String            @unique
+  cost            Float
+  status          MaintenanceStatus @default(PENDING)
+  rejectionReason String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  message   String
+  isRead    Boolean  @default(false)
+  type      String
+  createdAt DateTime @default(now())
 }
