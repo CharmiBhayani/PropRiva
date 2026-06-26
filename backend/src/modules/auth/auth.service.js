@@ -48,11 +48,11 @@ const register = async (data) => {
     },
   });
 
-  // send email
+  // send OTP email
   await sendEmail(
     user.email,
-    "OTP Verification",
-    `Your OTP is ${otp}`
+    "OTP Verification - PropRiva",
+    `Your PropRiva OTP is: ${otp}\n\nThis code expires in 5 minutes.`
   );
 
   return user;
@@ -189,16 +189,8 @@ const resendOtp = async (
   // send email
   await sendEmail(
     user.email,
-
-    "Resend OTP",
-
-    `
-Your new OTP is:
-
-${otp}
-
-This OTP will expire in 5 minutes.
-`
+    "Resend OTP - PropRiva",
+    `Your new PropRiva OTP is: ${otp}\n\nThis OTP will expire in 5 minutes.`
   );
 
   return {
