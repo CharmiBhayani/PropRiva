@@ -4,6 +4,7 @@ const prisma = require(
 const sendEmail = require(
   "../../utils/sendEmail"
 );
+const { createNotification } = require("../notifications/notifications.service");
 
 
 const inviteTenant = async (
@@ -81,6 +82,14 @@ Please login to PropRiva
 to approve or reject this request.
 `
 );
+
+    // In-app notification for tenant
+    await createNotification(
+      tenant.id,
+      `You have been invited by ${property.owner.name} to rent property "${property.title}".`,
+      "LEASE_INVITATION"
+    );
+
     return lease;
     };
 
@@ -122,7 +131,18 @@ const approveLease = async (
       data: {
         status: "ACTIVE",
       },
+      include: {
+        property: true,
+        tenant: true
+      }
     });
+
+  // Notify landlord
+  await createNotification(
+    updatedLease.property.ownerId,
+    `Tenant ${updatedLease.tenant.name} has accepted your lease invitation for "${updatedLease.property.title}".`,
+    "LEASE_ACCEPTED"
+  );
 
   return updatedLease;
 };
@@ -162,7 +182,18 @@ const rejectLease = async (
       data: {
         status: "REJECTED",
       },
+      include: {
+        property: true,
+        tenant: true
+      }
     });
+
+  // Notify landlord
+  await createNotification(
+    updatedLease.property.ownerId,
+    `Tenant ${updatedLease.tenant.name} has declined your lease invitation for "${updatedLease.property.title}".`,
+    "LEASE_DECLINED"
+  );
 
   return updatedLease;
 };
