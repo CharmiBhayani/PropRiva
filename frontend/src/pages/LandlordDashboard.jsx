@@ -8,11 +8,13 @@ import {
   adjustRentMaintenance,
   rejectMaintenance,
 } from "../store/maintenanceSlice";
+import { fetchPortfolioAnalysis, clearPortfolioAnalysis } from "../store/advisorySlice";
 import {
-  Building2, Plus, MapPin, IndianRupee, X,
+  Building2, Plus, MapPin, DollarSign, X,
   AlertCircle, Loader2, Landmark, ArrowRight, Home,
-  Wrench, Check, IndianRupee as Rupee, Ban, Receipt,
-  ChevronDown, ChevronUp, Clock, CheckCircle2, RefreshCcw,
+  Wrench, Check, Ban, Receipt,
+  ChevronDown, ChevronUp, Clock, CheckCircle2, RefreshCcw, Sparkles, Gauge,
+  TrendingUp, ShieldAlert, Award, FileText, BarChart2, ShieldCheck,
 } from "lucide-react";
 
 // ── Maintenance Status Badge ──────────────────────────────────────────────────
@@ -31,6 +33,20 @@ const StatusBadge = ({ status }) => {
     </span>
   );
 };
+
+// ── Field Wrapper ─────────────────────────────────────────────────────────────
+
+function F({ label, error, optional, children }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-2)" }}>
+        {label}{optional && <span className="normal-case font-medium ml-1" style={{ color: "var(--c-text-4)" }}>(optional)</span>}
+      </label>
+      {children}
+      {error && <span className="text-xs font-medium" style={{ color: "var(--c-error)" }}>{error}</span>}
+    </div>
+  );
+}
 
 // ── Reject Reason Modal ───────────────────────────────────────────────────────
 
@@ -53,7 +69,7 @@ function RejectModal({ request, onConfirm, onClose }) {
         </div>
         <div className="p-5 flex flex-col gap-3">
           <p className="text-xs" style={{ color: "var(--c-text-3)" }}>
-            Rejecting: <strong style={{ color: "var(--c-text-1)" }}>{request.description}</strong> (₹{request.cost})
+            Rejecting: <strong style={{ color: "var(--c-text-1)" }}>{request.description}</strong> (${request.cost})
           </p>
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-2)" }}>Reason (optional)</label>
@@ -175,7 +191,7 @@ function MaintenancePanel() {
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
-                          <span className="text-lg font-display font-bold" style={{ color: "var(--c-text-1)" }}>₹{r.cost?.toLocaleString()}</span>
+                          <span className="text-lg font-display font-bold" style={{ color: "var(--c-text-1)" }}>${r.cost?.toLocaleString()}</span>
                           {r.invoiceNo && <span className="text-[10px] font-mono" style={{ color: "var(--c-text-4)" }}>{r.invoiceNo}</span>}
                         </div>
                       </div>
@@ -234,7 +250,7 @@ function MaintenancePanel() {
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold truncate" style={{ color: "var(--c-text-2)" }}>{r.description}</p>
                         <p className="text-[10px]" style={{ color: "var(--c-text-4)" }}>
-                          {r.vendorName} · ₹{r.cost}
+                          {r.vendorName} · ${r.cost}
                           {r.rejectionReason && ` · "${r.rejectionReason}"`}
                         </p>
                       </div>
@@ -271,17 +287,24 @@ function MaintenancePanel() {
 export default function LandlordDashboard() {
   const dispatch = useDispatch();
   const { list: properties, loading, error } = useSelector((s) => s.properties);
+  const { data: portfolioData, loading: portfolioLoading, error: portfolioError } = useSelector((s) => s.advisory.portfolio);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({
     title: "", description: "", address: "", city: "", state: "", pincode: "", rentAmount: "",
   });
   const [errs, setErrs] = useState({});
+  const [showPortfolioMl, setShowPortfolioMl] = useState(false);
 
-  useEffect(() => { dispatch(fetchProperties()); }, [dispatch]);
+  useEffect(() => {
+    dispatch(fetchProperties());
+    return () => {
+      dispatch(clearPortfolioAnalysis());
+    };
+  }, [dispatch]);
 
   useEffect(() => {
     if (!modalOpen) return;
-    const fn = (e) => { if (e.key === "Escape") setModalOpen(false); };
+    const fn = (e) => { if (e.key === "Escape") { e.preventDefault(); setModalOpen(false); } };
     window.addEventListener("keydown", fn);
     return () => window.removeEventListener("keydown", fn);
   }, [modalOpen]);
@@ -298,8 +321,8 @@ export default function LandlordDashboard() {
     if (!form.address.trim()) e.address = "Address is required";
     if (!form.city.trim())    e.city    = "City is required";
     if (!form.state.trim())   e.state   = "State is required";
-    if (!form.pincode.trim()) e.pincode = "Pincode is required";
-    else if (!/^[0-9a-zA-Z\s\-]{3,10}$/.test(form.pincode)) e.pincode = "Enter a valid pincode";
+    if (!form.pincode.trim()) e.pincode = "ZIP Code is required";
+    else if (!/^\d{5}$/.test(form.pincode)) e.pincode = "Enter a valid 5-digit ZIP code";
     if (!form.rentAmount) e.rentAmount = "Rent amount is required";
     else if (isNaN(form.rentAmount) || Number(form.rentAmount) <= 0) e.rentAmount = "Must be a positive number";
     setErrs(e);
@@ -322,16 +345,7 @@ export default function LandlordDashboard() {
 
   const totalRent = properties.reduce((s, p) => s + (p.rentAmount || 0), 0);
 
-  const F = ({ label, error, children, optional }) => (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--c-text-2)" }}>
-        {label}
-        {optional && <span className="normal-case font-medium ml-1" style={{ color: "var(--c-text-4)" }}>(optional)</span>}
-      </label>
-      {children}
-      {error && <span className="text-xs font-medium" style={{ color: "var(--c-error)" }}>{error}</span>}
-    </div>
-  );
+
 
   const inp = (err, extra = "") =>
     `w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all duration-150 ${extra}` +
@@ -366,7 +380,7 @@ export default function LandlordDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {[
           { icon: Building2, label: "Total Listed",    value: properties.length, suffix: null,   iconBg: "var(--c-brand-subtle)",       iconColor: "var(--c-brand)" },
-          { icon: Landmark,  label: "Portfolio Value", value: `₹${totalRent.toLocaleString()}`, suffix: "/mo", iconBg: "rgba(16,185,129,0.1)", iconColor: "var(--c-success)" },
+          { icon: Landmark,  label: "Portfolio Value", value: `$${totalRent.toLocaleString()}`, suffix: "/mo", iconBg: "rgba(16,185,129,0.1)", iconColor: "var(--c-success)" },
         ].map(({ icon: Icon, label, value, suffix, iconBg, iconColor }) => (
           <div
             key={label}
@@ -385,6 +399,158 @@ export default function LandlordDashboard() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* ── AI Portfolio Advisory Panel ── */}
+      <div
+        className="rounded-2xl p-6"
+        style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", boxShadow: "var(--shadow-sm)" }}
+      >
+        <div className="flex items-center justify-between pb-3 border-b mb-5" style={{ borderColor: "var(--c-border)" }}>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(37,99,235,0.12)", color: "var(--c-brand)" }}>
+              <Sparkles size={16} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold" style={{ color: "var(--c-text-1)" }}>AI Portfolio Advisor</h3>
+              <p className="text-[10px]" style={{ color: "var(--c-text-3)" }}>
+                Aggregate metrics and health narrative for your properties
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowPortfolioMl(!showPortfolioMl)}
+            className="btn-ghost !py-1.5 !px-3 !text-xs flex items-center gap-1"
+          >
+            {showPortfolioMl ? "Hide Analytics" : "Open Advisor"}
+            {showPortfolioMl ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
+        </div>
+
+        {showPortfolioMl && (
+          <div className="flex flex-col gap-6">
+            {/* Action triggering */}
+            <div className="flex justify-between items-center bg-[var(--c-surface-2)] p-4 rounded-xl border border-[var(--c-border)]">
+              <span className="text-xs" style={{ color: "var(--c-text-2)" }}>
+                Compile all {properties.length} active listings and run portfolio risk & yield diagnostics.
+              </span>
+              <button
+                disabled={portfolioLoading || properties.length === 0}
+                onClick={() => dispatch(fetchPortfolioAnalysis({ enable_llm: true }))}
+                className="btn-primary !py-1.5 !px-4 !text-xs"
+              >
+                {portfolioLoading ? (
+                  <><Loader2 size={12} className="animate-spin" /> Analyzing...</>
+                ) : (
+                  <><BarChart2 size={12} /> Run Diagnostics</>
+                )}
+              </button>
+            </div>
+
+            {/* Error */}
+            {portfolioError && (
+              <div className="flex items-start gap-2 p-3.5 rounded-xl text-xs animate-scale-in" style={{ background: "var(--c-error-subtle)", color: "var(--c-error)" }}>
+                <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                <span>{portfolioError}</span>
+              </div>
+            )}
+
+            {/* Results output */}
+            {portfolioData && portfolioData.summary && (
+              <div className="flex flex-col gap-6 animate-scale-in">
+                {/* Visual grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {/* Total portfolio value */}
+                  <div className="rounded-xl p-4 border flex flex-col gap-1" style={{ background: "var(--c-surface-2)", borderColor: "var(--c-border)" }}>
+                    <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Est. Market Value</span>
+                    <span className="text-lg font-bold" style={{ color: "var(--c-text-1)" }}>
+                      ${portfolioData.summary.total_value?.toLocaleString("en-US")}
+                    </span>
+                    <span className="text-[9px] text-[var(--c-text-4)]">
+                      {portfolioData.summary.property_count} properties
+                    </span>
+                  </div>
+
+                  {/* Net annual income */}
+                  <div className="rounded-xl p-4 border flex flex-col gap-1" style={{ background: "var(--c-surface-2)", borderColor: "var(--c-border)" }}>
+                    <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Net Annual Income</span>
+                    <span className="text-lg font-bold" style={{ color: "var(--c-text-1)" }}>
+                      ${portfolioData.summary.net_annual_income?.toLocaleString("en-US")}
+                    </span>
+                    <span className="text-[9px] text-[var(--c-text-4)]">
+                      Rent: ${portfolioData.summary.total_annual_rent?.toLocaleString("en-US")}/yr
+                    </span>
+                  </div>
+
+                  {/* Yield */}
+                  <div className="rounded-xl p-4 border flex flex-col gap-1" style={{ background: "var(--c-surface-2)", borderColor: "var(--c-border)" }}>
+                    <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Net / Gross Yield</span>
+                    <span className="text-lg font-bold" style={{ color: "var(--c-success)" }}>
+                      {portfolioData.summary.net_yield_pct}%
+                    </span>
+                    <span className="text-[9px] text-[var(--c-text-4)]">
+                      Gross: {portfolioData.summary.gross_yield_pct}%
+                    </span>
+                  </div>
+
+                  {/* Diversification & Risk */}
+                  <div className="rounded-xl p-4 border flex flex-col gap-1" style={{ background: "var(--c-surface-2)", borderColor: "var(--c-border)" }}>
+                    <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Risk & Diversification</span>
+                    <span className="text-lg font-bold" style={{ color: "var(--c-brand)" }}>
+                      {portfolioData.summary.avg_risk_score?.toFixed(0)}/100
+                    </span>
+                    <span className="text-[9px] text-[var(--c-text-4)]">
+                      Diversification: {portfolioData.summary.diversification_score?.toFixed(0)}/100
+                    </span>
+                  </div>
+                </div>
+
+                {/* Narrative narrative */}
+                {portfolioData.summary.llm_narrative && (
+                  <div className="rounded-xl p-5 border flex flex-col gap-3" style={{ background: "var(--c-surface)", borderColor: "var(--c-border)" }}>
+                    <h4 className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--c-text-1)" }}>
+                      <FileText size={13} style={{ color: "var(--c-brand)" }} />
+                      AI Executive Portfolio Briefing
+                    </h4>
+                    <p className="text-xs leading-relaxed" style={{ color: "var(--c-text-2)" }}>
+                      {portfolioData.summary.llm_narrative}
+                    </p>
+                  </div>
+                )}
+
+                {/* Performers & Suggestions */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Rebalancing suggestions */}
+                  <div className="rounded-xl p-4 border flex flex-col gap-2" style={{ background: "var(--c-surface)", borderColor: "var(--c-border)" }}>
+                    <h4 className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--c-text-1)" }}>
+                      <ShieldCheck size={13} style={{ color: "var(--c-success)" }} />
+                      Rebalancing Warnings & Suggestions
+                    </h4>
+                    <ul className="flex flex-col gap-2 pt-1 text-xs">
+                      {portfolioData.summary.rebalancing_flags?.map((flag, idx) => (
+                        <li key={idx} className="flex gap-2" style={{ color: "var(--c-text-2)" }}>
+                          <span className="text-xs font-bold text-[var(--c-brand)] shrink-0">•</span>
+                          <span>{flag}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Suggested Next Steps */}
+                  <div className="rounded-xl p-4 border flex flex-col gap-2" style={{ background: "var(--c-surface)", borderColor: "var(--c-border)" }}>
+                    <h4 className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--c-text-1)" }}>
+                      <TrendingUp size={13} style={{ color: "var(--c-brand)" }} />
+                      Next Investment Suggestion
+                    </h4>
+                    <p className="text-xs leading-relaxed pt-1" style={{ color: "var(--c-text-2)" }}>
+                      {portfolioData.summary.next_investment_suggestion}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Maintenance Review Panel ── */}
@@ -435,8 +601,8 @@ export default function LandlordDashboard() {
                     <span className="truncate">{p.address}, {p.city}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <IndianRupee size={13} style={{ color: "var(--c-success)" }} className="shrink-0" />
-                    <span className="font-bold" style={{ color: "var(--c-text-1)" }}>₹{p.rentAmount?.toLocaleString()}</span>
+                    <DollarSign size={13} style={{ color: "var(--c-success)" }} className="shrink-0" />
+                    <span className="font-bold" style={{ color: "var(--c-text-1)" }}>${p.rentAmount?.toLocaleString()}</span>
                     <span style={{ color: "var(--c-text-3)" }}>/ month</span>
                   </div>
                 </div>
@@ -506,7 +672,7 @@ export default function LandlordDashboard() {
 
               <F label="Property Title *" error={errs.title}>
                 <input type="text" name="title" value={form.title} onChange={handleChange}
-                  placeholder="e.g. 2 BHK in Koramangala"
+                  placeholder="e.g. 3 Bedroom House in Seattle"
                   className={inp(errs.title)} style={inputStyle} required />
               </F>
 
@@ -527,9 +693,9 @@ export default function LandlordDashboard() {
 
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { name: "city",    label: "City *",    ph: "Bangalore" },
-                  { name: "state",   label: "State *",   ph: "Karnataka" },
-                  { name: "pincode", label: "Pincode *", ph: "560001" },
+                  { name: "city",    label: "City *",    ph: "Seattle" },
+                  { name: "state",   label: "State *",   ph: "WA" },
+                  { name: "pincode", label: "ZIP Code *", ph: "98001" },
                 ].map(({ name, label, ph }) => (
                   <F key={name} label={label} error={errs[name]}>
                     <input type="text" name={name} value={form[name]} onChange={handleChange}
@@ -538,14 +704,14 @@ export default function LandlordDashboard() {
                 ))}
               </div>
 
-              <F label="Monthly Rent (₹) *" error={errs.rentAmount}>
+              <F label="Monthly Rent ($) *" error={errs.rentAmount}>
                 <div className="relative">
                   <span
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold pointer-events-none text-sm"
                     style={{ color: "var(--c-text-3)" }}
-                  >₹</span>
+                  >$</span>
                   <input type="number" name="rentAmount" value={form.rentAmount} onChange={handleChange}
-                    placeholder="15000"
+                    placeholder="2500"
                     className={`pl-8 pr-4 py-2.5 w-full rounded-xl text-sm outline-none transition-all duration-150 ${errs.rentAmount ? "field-error" : ""}`}
                     style={inputStyle}
                     onFocus={(e) => { if (!errs.rentAmount) { e.target.style.borderColor = "var(--c-brand)"; e.target.style.boxShadow = "0 0 0 3px var(--c-brand-ring)"; }}}
