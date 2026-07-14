@@ -7,8 +7,7 @@ const leaseRoutes = require("../modules/leases/leases.routes");
 const maintenanceRoutes = require("../modules/maintenance/maintenance.routes");
 const notificationRoutes = require("../modules/notifications/notifications.routes");
 const paymentRoutes = require("../modules/payments/payments.routes");
-
-
+const advisoryRoutes = require("../modules/advisory/advisory.routes");
 
 const router = express.Router();
 
@@ -19,8 +18,6 @@ router.use("/lease", leaseRoutes);
 router.use("/maintenance", maintenanceRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/payments", paymentRoutes);
-
-
-
+router.use("/advisory", advisoryRoutes);
 
 module.exports = router;
