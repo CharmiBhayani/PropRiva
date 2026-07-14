@@ -5,6 +5,7 @@ import leasesReducer from "./leasesSlice";
 import notificationsReducer from "./notificationsSlice";
 import paymentsReducer from "./paymentsSlice";
 import maintenanceReducer from "./maintenanceSlice";
+import advisoryReducer from "./advisorySlice";
 
 const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ const store = configureStore({
     notifications: notificationsReducer,
     payments: paymentsReducer,
     maintenance: maintenanceReducer,
+    advisory: advisoryReducer,
   },
 });
 
