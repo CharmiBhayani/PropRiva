@@ -17,6 +17,7 @@
     "nodemon": "^3.1.14"
   },
   "scripts": {
-    "dev": "node backend/src/server.js"
+    "dev": "node backend/src/server.js",
+    "dev-ml": "ml\\.venv\\Scripts\\python -c \"from dotenv import load_dotenv; load_dotenv('ml/.env'); import uvicorn; uvicorn.run('api.main:app', app_dir='ml', host='127.0.0.1', port=8000, reload=True)\""
   }
 }
