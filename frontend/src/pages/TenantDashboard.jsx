@@ -12,7 +12,7 @@ import {
   clearMaintenanceError, clearFileSuccess,
 } from "../store/maintenanceSlice";
 import {
-  Building2, MapPin, IndianRupee, User, Check, X,
+  Building2, MapPin, DollarSign, User, Check, X,
   AlertCircle, Loader2, MailCheck, Key, CreditCard,
   Wrench, Receipt, Upload, Clock, CheckCircle2, XCircle,
   RotateCcw, History, ChevronDown, ChevronUp,
@@ -52,6 +52,20 @@ const StatusBadge = ({ status }) => {
     </span>
   );
 };
+
+// ── Field Wrapper ─────────────────────────────────────────────────────────────
+
+function F({ label, error, optional, children }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-2)" }}>
+        {label}{optional && <span className="normal-case font-medium ml-1" style={{ color: "var(--c-text-4)" }}>(optional)</span>}
+      </label>
+      {children}
+      {error && <span className="text-xs text-[var(--c-error)]">{error}</span>}
+    </div>
+  );
+}
 
 // ── Pay Rent Modal ────────────────────────────────────────────────────────────
 
@@ -163,17 +177,17 @@ function PayRentModal({ lease, onClose }) {
             </div>
             <div className="flex items-center justify-between text-sm">
               <span style={{ color: "var(--c-text-3)" }}>Monthly Rent</span>
-              <span className="font-bold" style={{ color: "var(--c-text-1)" }}>₹{(lease.property?.rentAmount || 0).toLocaleString()}</span>
+              <span className="font-bold" style={{ color: "var(--c-text-1)" }}>${(lease.property?.rentAmount || 0).toLocaleString()}</span>
             </div>
             {(lease.rentCredits || 0) > 0 && (
               <div className="flex items-center justify-between text-sm">
                 <span style={{ color: "var(--c-success)" }}>Maintenance Credit</span>
-                <span className="font-bold" style={{ color: "var(--c-success)" }}>− ₹{lease.rentCredits.toLocaleString()}</span>
+                <span className="font-bold" style={{ color: "var(--c-success)" }}>− ${lease.rentCredits.toLocaleString()}</span>
               </div>
             )}
             <div className="flex items-center justify-between text-sm pt-2 border-t" style={{ borderColor: "var(--c-border)" }}>
               <span className="font-bold" style={{ color: "var(--c-text-2)" }}>Amount Due</span>
-              <span className="text-lg font-display font-bold" style={{ color: "var(--c-success)" }}>₹{effectiveRent.toLocaleString()}</span>
+              <span className="text-lg font-display font-bold" style={{ color: "var(--c-success)" }}>${effectiveRent.toLocaleString()}</span>
             </div>
           </div>
 
@@ -210,7 +224,7 @@ function PayRentModal({ lease, onClose }) {
               {(loading || verifying || step === "ordering") ? (
                 <><Loader2 size={15} className="animate-spin" /> Processing…</>
               ) : (
-                <><CreditCard size={15} /> Pay ₹{effectiveRent.toLocaleString()} via Razorpay</>
+                <><CreditCard size={15} /> Pay ${effectiveRent.toLocaleString()} via Razorpay</>
               )}
             </button>
           )}
@@ -277,16 +291,6 @@ function FileMaintenanceModal({ lease, onClose }) {
     `w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-all duration-150 ${err ? "field-error" : "focus:ring-2"}`;
   const inputStyle = { background: "var(--c-surface)", border: "1.5px solid var(--c-border)", color: "var(--c-text-1)" };
 
-  const F = ({ label, error, children, optional }) => (
-    <div className="flex flex-col gap-1">
-      <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-2)" }}>
-        {label}{optional && <span className="normal-case font-medium ml-1" style={{ color: "var(--c-text-4)" }}>(optional)</span>}
-      </label>
-      {children}
-      {error && <span className="text-xs text-[var(--c-error)]">{error}</span>}
-    </div>
-  );
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -344,9 +348,9 @@ function FileMaintenanceModal({ lease, onClose }) {
               placeholder="e.g. Sharma Plumbing Works" className={inp(errs.vendorName)} style={inputStyle} />
           </F>
 
-          <F label="Amount Paid (₹) *" error={errs.cost}>
+          <F label="Amount Paid ($) *" error={errs.cost}>
             <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-sm pointer-events-none" style={{ color: "var(--c-text-3)" }}>₹</span>
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-sm pointer-events-none" style={{ color: "var(--c-text-3)" }}>$</span>
               <input type="number" name="cost" value={form.cost} onChange={handleChange}
                 placeholder="850"
                 className={`pl-8 pr-4 py-2.5 w-full rounded-xl text-sm outline-none transition-all duration-150 ${errs.cost ? "field-error" : "focus:ring-2"}`}
@@ -437,7 +441,7 @@ function MaintenanceHistory({ leaseId }) {
                   <div className="flex items-center gap-3 mt-1 text-[10px]" style={{ color: "var(--c-text-4)" }}>
                     <span>{r.vendorName}</span>
                     <span>·</span>
-                    <span className="font-semibold" style={{ color: "var(--c-text-2)" }}>₹{r.cost}</span>
+                    <span className="font-semibold" style={{ color: "var(--c-text-2)" }}>${r.cost}</span>
                     {r.billCode && <><span>·</span><span className="font-mono">{r.billCode}</span></>}
                   </div>
                   {r.rejectionReason && (
@@ -527,8 +531,8 @@ export default function TenantDashboard() {
                       <span className="truncate">{inv.property?.address}, {inv.property?.city}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
-                      <IndianRupee size={13} style={{ color: "var(--c-success)" }} className="shrink-0" />
-                      <span className="font-bold" style={{ color: "var(--c-text-1)" }}>₹{inv.property?.rentAmount}</span>
+                      <DollarSign size={13} style={{ color: "var(--c-success)" }} className="shrink-0" />
+                      <span className="font-bold" style={{ color: "var(--c-text-1)" }}>${inv.property?.rentAmount}</span>
                       <span style={{ color: "var(--c-text-3)" }}>/ month</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm" style={{ color: "var(--c-text-3)" }}>
@@ -599,15 +603,15 @@ export default function TenantDashboard() {
                       <span className="truncate">{lease.property?.address}, {lease.property?.city}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
-                      <IndianRupee size={13} style={{ color: "var(--c-success)" }} className="shrink-0" />
-                      <span className="font-bold" style={{ color: "var(--c-text-1)" }}>₹{lease.property?.rentAmount?.toLocaleString()}</span>
+                      <DollarSign size={13} style={{ color: "var(--c-success)" }} className="shrink-0" />
+                      <span className="font-bold" style={{ color: "var(--c-text-1)" }}>${lease.property?.rentAmount?.toLocaleString()}</span>
                       <span style={{ color: "var(--c-text-3)" }}>/ month</span>
                     </div>
                     {(lease.rentCredits || 0) > 0 && (
                       <div className="flex items-center gap-2 text-sm">
                         <RotateCcw size={13} style={{ color: "var(--c-success)" }} className="shrink-0" />
                         <span style={{ color: "var(--c-success)" }} className="font-semibold">
-                          ₹{lease.rentCredits} maintenance credit applied
+                          ${lease.rentCredits} maintenance credit applied
                         </span>
                       </div>
                     )}
