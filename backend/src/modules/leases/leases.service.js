@@ -14,15 +14,15 @@ const inviteTenant = async (
 
   // find property
   const property =
-  await prisma.property.findUnique({
-    where: {
-      id: data.propertyId,
-    },
+    await prisma.property.findUnique({
+      where: {
+        id: data.propertyId,
+      },
 
-    include: {
-      owner: true,
-    },
-  });
+      include: {
+        owner: true,
+      },
+    });
 
   if (!property) {
     throw new Error("Property not found");
@@ -62,12 +62,12 @@ const inviteTenant = async (
       },
     });
 
-    await sendEmail(
-  tenant.email,
+  await sendEmail(
+    tenant.email,
 
-  "Property Tenant Invitation",
+    "Property Tenant Invitation",
 
-  `
+    `
 Hello ${tenant.name},
 
 ${property.owner.name} has invited you
@@ -81,17 +81,17 @@ ${property.address}
 Please login to PropRiva
 to approve or reject this request.
 `
-);
+  );
 
-    // In-app notification for tenant
-    await createNotification(
-      tenant.id,
-      `You have been invited by ${property.owner.name} to rent property "${property.title}".`,
-      "LEASE_INVITATION"
-    );
+  // In-app notification for tenant
+  await createNotification(
+    tenant.id,
+    `You have been invited by ${property.owner.name} to rent property "${property.title}".`,
+    "LEASE_INVITATION"
+  );
 
-    return lease;
-    };
+  return lease;
+};
 
 
 const approveLease = async (

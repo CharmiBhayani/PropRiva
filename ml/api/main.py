@@ -35,13 +35,20 @@ class PropertyInput(BaseModel):
 
     bedrooms:   int   = Field(3,      ge=0,   le=15)
     bathrooms:  float = Field(2.0,    ge=0,   le=12)
-    sqft:       int   = Field(1_500,  ge=200, le=15_000)
-    lot_size:   int   = Field(5_000,  ge=0)
-    year_built: int   = Field(1990,   ge=1800, le=2024)
+    sqft:       int   = Field(1_000,  ge=200, le=15_000)
+    lot_size:   int   = Field(1_000,  ge=0)
+    year_built: int   = Field(2020,   ge=1800, le=2026)
     condition:  int   = Field(3,      ge=1,   le=5)
     grade:      int   = Field(7,      ge=1,   le=13)
-    zip_code:   str   = Field("98001")
-    listed_price: Optional[float] = Field(None, description="Listed / asking price $")
+    zip_code:   str   = Field("Thane")
+    listed_price: Optional[float] = Field(None, description="Listed / asking price ₹")
+    property_type: Optional[str] = Field("Residential Apartment")
+    furnishing:    Optional[float] = Field(1.0)
+    age:           Optional[int] = Field(5)
+    total_floors:  Optional[int] = Field(7)
+    floors:        Optional[int] = Field(3)
+    balconies:     Optional[int] = Field(1)
+    locality:      Optional[str] = Field(None)
 
     zhvi_at_sale:    Optional[float] = Field(None)
     zhvi_12m_growth: Optional[float] = Field(None)
@@ -75,8 +82,8 @@ class PortfolioPropertyInput(BaseModel):
     property_id:             Optional[str]   = Field(None)
     zip_code:                Optional[str]   = Field(None)
 
-    m1_estimated_value:      Optional[float] = Field(None, description="M1 estimated value $")
-    m2_monthly_rent:         Optional[float] = Field(None, description="M2 estimated monthly rent $")
+    m1_estimated_value:      Optional[float] = Field(None, description="M1 estimated value ₹")
+    m2_monthly_rent:         Optional[float] = Field(None, description="M2 estimated monthly rent ₹")
     m3_appreciation_pct_12m: Optional[float] = Field(None, description="M3 12m appreciation %")
 
     
@@ -85,11 +92,11 @@ class PortfolioPropertyInput(BaseModel):
 
    
     annual_maintenance:      float           = Field(
-        0.0, description="Annual maintenance cost $ — user input, not estimated"
+        0.0, description="Annual maintenance cost ₹ — user input, not estimated"
     )
 
 
-    sale_price:              Optional[float] = Field(None, description="Purchase or last known price $")
+    sale_price:              Optional[float] = Field(None, description="Purchase or last known price ₹")
 
 
 class PortfolioInput(BaseModel):
@@ -125,6 +132,8 @@ def analyse_property(body: PropertyInput):
         advisor   = get_advisor()
         prop_dict = body.model_dump(exclude={"listed_price"})
         prop_dict = {k: v for k, v in prop_dict.items() if v is not None}
+        if "locality" in prop_dict:
+            prop_dict["zip_code"] = prop_dict.pop("locality")
         result    = advisor.analyse_property(
             prop=prop_dict,
             listed_price=body.listed_price,

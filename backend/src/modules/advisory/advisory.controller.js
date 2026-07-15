@@ -3,15 +3,18 @@ const prisma = require("../../config/prisma");
 
 const analyseProperty = async (req, res) => {
   try {
+    const ageVal = req.body.age !== undefined && req.body.age !== null ? parseInt(req.body.age) : 5;
     const mappedData = {
-      bedrooms:     parseInt(req.body.bedrooms || req.body.bhk_config) || 3,
-      bathrooms:    parseFloat(req.body.bathrooms) || 2.0,
-      sqft:         parseInt(req.body.sqft) || 1500,
-      lot_size:     parseInt(req.body.lot_size || req.body.total_area) || 5000,
-      year_built:   parseInt(req.body.year_built) || 1990,
-      condition:    parseInt(req.body.condition) || 3,
-      grade:        parseInt(req.body.grade) || 7,
-      zip_code:     String(req.body.zip_code || req.body.pincode || "98001"),
+      property_type: req.body.property_type || "Residential Apartment",
+      zip_code: String(req.body.zip_code || req.body.city || "Thane"), // zip_code maps to CITY in ML service
+      bedrooms: parseInt(req.body.bedrooms || req.body.bhk_config) || 2,
+      furnishing: req.body.furnishing !== undefined && req.body.furnishing !== null ? parseFloat(req.body.furnishing) : 1.0,
+      age: ageVal,
+      year_built: 2026 - ageVal,
+      total_floors: req.body.total_floors !== undefined && req.body.total_floors !== null ? parseInt(req.body.total_floors) : 7,
+      floors: req.body.floors !== undefined && req.body.floors !== null ? parseInt(req.body.floors) : 3,
+      balconies: req.body.balconies !== undefined && req.body.balconies !== null ? parseInt(req.body.balconies) : 1,
+      sqft: parseInt(req.body.sqft) || 1000,
       listed_price: req.body.listed_price ? parseFloat(req.body.listed_price) : null,
     };
 
@@ -58,32 +61,26 @@ const analysePortfolio = async (req, res) => {
         });
       }
 
-      // Convert DB properties to US portfolio inputs
+      // Convert DB properties to Indian/Mumbai portfolio inputs
       properties = dbProperties.map((p) => {
-        // Use US 5-digit ZIP code — fallback to 98001
-        const zipCode = p.pincode
-          ? p.pincode.replace(/\D/g, "").padStart(5, "0").slice(0, 5)
-          : "98001";
-
-        // Derive bedrooms from property title or default to 3
-        const bedrooms = _extractBedrooms(p.title) || 3;
-
-        // Estimated property value: annual rent × 15 (typical US gross yield ~6.7%)
-        const estimatedValue = p.rentAmount ? p.rentAmount * 12 * 15 : 400_000;
+        const zipCode = p.city || "Thane";
+        const bedrooms = _extractBedrooms(p.title) || 2;
+        const salePrice = p.listedPrice && p.listedPrice > 0 ? p.listedPrice : 10000000;
 
         return {
-          property_id:        String(p.id),
-          zip_code:           zipCode,
-          city:               p.city || "Seattle",
-          bedrooms:           bedrooms,
-          bathrooms:          2.0,
-          sqft:               1500,
-          lot_size:           5000,
-          year_built:         2000,
-          condition:          3,
-          grade:              7,
-          annual_maintenance: Math.round(estimatedValue * 0.01), // US 1% rule
-          sale_price:         estimatedValue,
+          property_id: String(p.id),
+          zip_code: zipCode,
+          city: p.city || "Thane",
+          bedrooms: bedrooms,
+          sqft: 1000,
+          property_type: "Residential Apartment",
+          furnishing: 1,
+          age: 5,
+          total_floors: 7,
+          floors: 3,
+          balconies: 1,
+          annual_maintenance: Math.round(salePrice * 0.01), // standard annual maintenance: 1%
+          sale_price: salePrice,
         };
       });
     }
@@ -93,47 +90,49 @@ const analysePortfolio = async (req, res) => {
       properties.map(async (p) => {
         try {
           const analysis = await advisoryService.analyseProperty({
-            bedrooms:        p.bedrooms      || 3,
-            bathrooms:       p.bathrooms     || 2.0,
-            sqft:            p.sqft          || 1500,
-            lot_size:        p.lot_size      || 5000,
-            year_built:      p.year_built    || 2000,
-            condition:       p.condition     || 3,
-            grade:           p.grade         || 7,
-            zip_code:        p.zip_code      || "98001",
-            listed_price:    p.sale_price    || null,
+            property_type: p.property_type || "Residential Apartment",
+            zip_code: p.zip_code || "Thane",
+            bedrooms: p.bedrooms || 2,
+            furnishing: p.furnishing || 1,
+            age: p.age || 5,
+            year_built: 2026 - (p.age || 5),
+            total_floors: p.total_floors || 7,
+            floors: p.floors || 3,
+            balconies: p.balconies || 1,
+            sqft: p.sqft || 1000,
+            listed_price: p.sale_price || null,
           });
 
-          // Fallback values calibrated for US market
-          const fallbackValue = p.sale_price || 400_000;
-          const fallbackRent  = Math.round((p.sale_price || 400_000) * 0.005); // ~6% yield
+          // Fallback values calibrated for Indian market
+          const fallbackValue = p.sale_price || 10000000;
+          const fallbackRent = Math.round((p.sale_price || 10000000) * 0.0025); // ~3% yield
 
           return {
-            property_id:             p.property_id,
-            zip_code:                p.zip_code || "98001",
-            city:                    p.city || "Seattle",
-            m1_estimated_value:      analysis.m1?.estimated_value || fallbackValue,
-            m2_monthly_rent:         analysis.m2?.monthly_rent    || fallbackRent,
+            property_id: p.property_id,
+            zip_code: p.zip_code || "Thane",
+            city: p.city || "Thane",
+            m1_estimated_value: analysis.m1?.estimated_value || fallbackValue,
+            m2_monthly_rent: analysis.m2?.monthly_rent || fallbackRent,
             m3_appreciation_pct_12m: analysis.m3?.appreciation_12m_pct || 5.0,
-            m6_risk_score:           analysis.m6?.risk_score      || 30.0,
-            m6_risk_tier:            analysis.m6?.risk_tier        || "Low",
-            annual_maintenance:      p.annual_maintenance          || Math.round(fallbackValue * 0.01),
-            sale_price:              p.sale_price                  || fallbackValue,
+            m6_risk_score: analysis.m6?.risk_score || 30.0,
+            m6_risk_tier: analysis.m6?.risk_tier || "Low",
+            annual_maintenance: p.annual_maintenance || Math.round(fallbackValue * 0.01),
+            sale_price: p.sale_price || fallbackValue,
           };
         } catch (e) {
           // Fallback if individual property analysis fails
-          const fallbackValue = p.sale_price || 400_000;
+          const fallbackValue = p.sale_price || 10000000;
           return {
-            property_id:             p.property_id,
-            zip_code:                p.zip_code || "98001",
-            city:                    p.city || "Seattle",
-            m1_estimated_value:      fallbackValue,
-            m2_monthly_rent:         Math.round(fallbackValue * 0.005),
+            property_id: p.property_id,
+            zip_code: p.zip_code || "Thane",
+            city: p.city || "Thane",
+            m1_estimated_value: fallbackValue,
+            m2_monthly_rent: Math.round(fallbackValue * 0.0025),
             m3_appreciation_pct_12m: 5.0,
-            m6_risk_score:           30.0,
-            m6_risk_tier:            "Low",
-            annual_maintenance:      p.annual_maintenance || Math.round(fallbackValue * 0.01),
-            sale_price:              fallbackValue,
+            m6_risk_score: 30.0,
+            m6_risk_tier: "Low",
+            annual_maintenance: p.annual_maintenance || Math.round(fallbackValue * 0.01),
+            sale_price: fallbackValue,
           };
         }
       })

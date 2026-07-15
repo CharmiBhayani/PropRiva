@@ -125,7 +125,7 @@ const decideRequest = async (requestId, decision, landlordId, reason) => {
     emailBody = `Hello ${tenantName},\n\nYour maintenance reimbursement request of ₹${request.cost} for "${propertyTitle}" has been approved.\n\nThe landlord will pay you directly.\n\nRegards,\nPropRiva Team`;
   } else if (decision === "ADJUST_RENT") {
     finalStatus = "APPROVED_RENT_ADJUSTED";
-    
+
     // Add to lease.rentCredits
     await prisma.lease.update({
       where: { id: request.leaseId },
@@ -167,7 +167,7 @@ const getRequestsForUser = async (userId, leaseId) => {
     where: { ownerId: userId },
     select: { id: true }
   });
-  
+
   const propertyIds = ownedProperties.map(p => p.id);
 
   const whereCondition = {

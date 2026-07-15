@@ -39,8 +39,8 @@ class M4PortfolioAnalyser:
         if n == 0:
             raise ValueError("Portfolio is empty.")
 
-        val_col   = self._pick(df, ["m1_estimated_value", "sale_price"],       default=300_000.0)
-        rent_col  = self._pick(df, ["m2_monthly_rent"],                         default=1_500.0)
+        val_col   = self._pick(df, ["m1_estimated_value", "sale_price"],       default=10_000_000.0)
+        rent_col  = self._pick(df, ["m2_monthly_rent"],                         default=35_000.0)
         appr_col  = self._pick(df, ["m3_appreciation_pct_12m",
                                      "appreciation_pct_12m"],                   default=5.0)
         risk_col  = self._pick(df, ["m6_risk_score"],         default=40.0)
@@ -241,13 +241,13 @@ class M4PortfolioAnalyser:
     @staticmethod
     def to_llm_context(summary: PortfolioSummary) -> dict:
         return {
-            "portfolio_value":            f"${summary.total_value:,.0f}",
+            "portfolio_value":            f"₹{summary.total_value:,.0f}",
             "property_count":             summary.property_count,
             "gross_yield_pct":            f"{summary.gross_yield_pct:.1f}%",
             "net_yield_pct":              f"{summary.net_yield_pct:.1f}%",
-            "total_annual_rent":          f"${summary.total_annual_rent:,.0f}",
-            "total_annual_maintenance":   f"${summary.total_annual_maintenance:,.0f}",
-            "net_annual_income":          f"${summary.net_annual_income:,.0f}",
+            "total_annual_rent":          f"₹{summary.total_annual_rent:,.0f}",
+            "total_annual_maintenance":   f"₹{summary.total_annual_maintenance:,.0f}",
+            "net_annual_income":          f"₹{summary.net_annual_income:,.0f}",
             "appreciation_forecast_12m":  f"{summary.portfolio_appreciation_pct_12m:.1f}%",
             "avg_risk_score":             summary.avg_risk_score,
             "diversification_score":      summary.diversification_score,

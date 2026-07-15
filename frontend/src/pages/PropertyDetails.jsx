@@ -21,21 +21,22 @@ export default function PropertyDetails() {
   const [formError, setFormError] = useState("");
   const [showMlPanel, setShowMlPanel] = useState(false);
   const [showConfig, setShowConfig] = useState(true);
-  // Helper: format $ as USD
-  const fmtUSD = (v) => {
+  // Helper: format as INR
+  const fmtINR = (v) => {
     if (!v && v !== 0) return "N/A";
-    return `$${v.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+    return `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
   };
 
   const [mlForm, setMlForm] = useState({
-    bedrooms:        3,
-    bathrooms:       2.0,
-    sqft:            1500,
-    lot_size:        5000,
-    year_built:      2000,
-    condition:       3,
-    grade:           7,
-    zip_code:        "98001",
+    property_type:   "Residential Apartment",
+    zip_code:        "Thane", // represents Locality/City
+    bedrooms:        2,
+    furnishing:      1.0,
+    age:             5,
+    total_floors:    7,
+    floors:          3,
+    balconies:       1,
+    sqft:            1000,
     listed_price:    "",
   });
 
@@ -51,14 +52,9 @@ export default function PropertyDetails() {
 
   useEffect(() => {
     if (currentProperty) {
-      // Use actual US ZIP code from DB (5 digits)
-      const zip_code = currentProperty.pincode
-        ? currentProperty.pincode.replace(/\D/g, "").padStart(5, "0").slice(0, 5)
-        : "98001";
-      // Estimate listing price: annual rent × 15 (≈6.7% gross yield — typical US)
-      const estPrice = currentProperty.rentAmount
-        ? String(Math.round(currentProperty.rentAmount * 12 * 15))
-        : "";
+      // Use pincode (storing Locality) or city
+      const zip_code = currentProperty.pincode || currentProperty.city || "Thane";
+      const estPrice = currentProperty.listedPrice ? String(currentProperty.listedPrice) : "";
       setMlForm((prev) => ({
         ...prev,
         zip_code,
@@ -185,7 +181,7 @@ export default function PropertyDetails() {
                 Location
               </span>
               <span className="text-sm font-semibold leading-relaxed" style={{ color: "var(--c-text-1)" }}>
-                {currentProperty.address}, {currentProperty.city}, {currentProperty.state} – {currentProperty.pincode}
+                {currentProperty.address}, {currentProperty.city}, {currentProperty.state}
               </span>
             </div>
           </div>
@@ -195,14 +191,14 @@ export default function PropertyDetails() {
               className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
               style={{ background: "rgba(16,185,129,0.1)", color: "var(--c-success)" }}
             >
-              <DollarSign size={17} strokeWidth={2.5} />
+              <span className="font-bold text-lg" style={{ color: "var(--c-success)" }}>₹</span>
             </div>
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider block mb-0.5" style={{ color: "var(--c-text-4)" }}>
                 Monthly Rent
               </span>
               <span className="text-xl font-display font-bold" style={{ color: "var(--c-text-1)" }}>
-                ${currentProperty.rentAmount?.toLocaleString()}
+                ₹{currentProperty.rentAmount?.toLocaleString("en-IN")}
                 <span className="text-xs font-semibold ml-1" style={{ color: "var(--c-text-4)" }}>/ month</span>
               </span>
             </div>
@@ -415,7 +411,7 @@ export default function PropertyDetails() {
           <div className="flex flex-col gap-6">
             {/* Description */}
             <p className="text-xs" style={{ color: "var(--c-text-3)" }}>
-              Get ML-powered US property valuations ($), rental estimates, appreciation forecasts, risk analysis, and AI investment narrative using models M1–M6 trained on US real estate data (King County dataset).
+              Get ML-powered Mumbai property valuations (₹), rental estimates, appreciation forecasts, risk analysis, and AI investment narrative using models M1–M6 trained on Mumbai real estate data.
             </p>
 
             {/* Input Config Form */}
@@ -425,43 +421,132 @@ export default function PropertyDetails() {
                 className="w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider mb-3 cursor-pointer"
                 style={{ color: "var(--c-text-2)" }}
               >
-                <span>1. Configure US Property Parameters</span>
+                <span>1. Configure Mumbai Property Parameters</span>
                 {showConfig ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               </button>
 
               {showConfig && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
 
+                  {/* Property Type */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Property Type</label>
+                    <select
+                      id="property-type"
+                      value={mlForm.property_type}
+                      onChange={(e) => setMlForm({ ...mlForm, property_type: e.target.value })}
+                      className="field !pl-4 !py-1.5"
+                    >
+                      {[
+                        'Residential Apartment', 'Independent House/Villa', 
+                        'Independent/Builder Floor', 'Serviced Apartments', 'Studio Apartment'
+                      ].map((v) => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Locality */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Locality</label>
+                    <select
+                      id="locality"
+                      value={mlForm.zip_code}
+                      onChange={(e) => setMlForm({ ...mlForm, zip_code: e.target.value })}
+                      className="field !pl-4 !py-1.5"
+                    >
+                      {[
+                        'Central Mumbai suburbs', 'Mira Road And Beyond', 'Mumbai Andheri-Dahisar', 
+                        'Mumbai Beyond Thane', 'Mumbai Harbour', 'Mumbai South West', 
+                        'Navi Mumbai', 'South Mumbai', 'Thane'
+                      ].map((v) => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                  </div>
+
                   {/* Bedrooms */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Bedrooms</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Bedrooms (BHK)</label>
                     <select
                       id="bedrooms"
                       value={mlForm.bedrooms}
                       onChange={(e) => setMlForm({ ...mlForm, bedrooms: parseInt(e.target.value) })}
                       className="field !pl-4 !py-1.5"
                     >
-                      {[1, 2, 3, 4, 5, 6].map((v) => <option key={v} value={v}>{v} Bed</option>)}
+                      {[1, 2, 3, 4, 5].map((v) => <option key={v} value={v}>{v} BHK</option>)}
                     </select>
                   </div>
 
-                  {/* Bathrooms */}
+                  {/* Furnishing */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Bathrooms</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Furnishing</label>
+                    <select
+                      id="furnishing"
+                      value={mlForm.furnishing}
+                      onChange={(e) => setMlForm({ ...mlForm, furnishing: parseFloat(e.target.value) })}
+                      className="field !pl-4 !py-1.5"
+                    >
+                      {[
+                        [0, "Unfurnished"],
+                        [1, "Semi-Furnished"],
+                        [2, "Furnished"],
+                        [3, "Fully Furnished"],
+                        [4, "Luxury Furnished"]
+                      ].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Property Age */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Property Age (Years)</label>
                     <input
-                      id="bathrooms"
-                      type="number" step="0.5" min="1" max="12"
-                      value={mlForm.bathrooms}
-                      onChange={(e) => setMlForm({ ...mlForm, bathrooms: parseFloat(e.target.value) || 1 })}
+                      id="property-age"
+                      type="number" min="0" max="100"
+                      value={mlForm.age}
+                      onChange={(e) => setMlForm({ ...mlForm, age: parseInt(e.target.value) || 0 })}
                       className="field !pl-4 !py-1.5"
                     />
                   </div>
 
-                  {/* Sqft Living */}
+                  {/* Total Floors */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Living Area (sq.ft.)</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Total Floors</label>
                     <input
-                      id="sqft-living"
+                      id="total-floors"
+                      type="number" min="1" max="100"
+                      value={mlForm.total_floors}
+                      onChange={(e) => setMlForm({ ...mlForm, total_floors: parseInt(e.target.value) || 1 })}
+                      className="field !pl-4 !py-1.5"
+                    />
+                  </div>
+
+                  {/* Floor Number */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Floor Number</label>
+                    <input
+                      id="floor-number"
+                      type="number" min="0" max="100"
+                      value={mlForm.floors}
+                      onChange={(e) => setMlForm({ ...mlForm, floors: parseInt(e.target.value) || 0 })}
+                      className="field !pl-4 !py-1.5"
+                    />
+                  </div>
+
+                  {/* Balconies */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Balconies</label>
+                    <select
+                      id="balconies"
+                      value={mlForm.balconies}
+                      onChange={(e) => setMlForm({ ...mlForm, balconies: parseInt(e.target.value) })}
+                      className="field !pl-4 !py-1.5"
+                    >
+                      {[0, 1, 2, 3, 4].map((v) => <option key={v} value={v}>{v} Balconies</option>)}
+                    </select>
+                  </div>
+
+                  {/* Area */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Area (sq.ft.)</label>
+                    <input
+                      id="area-sqft"
                       type="number"
                       value={mlForm.sqft}
                       onChange={(e) => setMlForm({ ...mlForm, sqft: parseInt(e.target.value) || 0 })}
@@ -469,83 +554,17 @@ export default function PropertyDetails() {
                     />
                   </div>
 
-                  {/* Lot Size */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Lot Size (sq.ft.)</label>
-                    <input
-                      id="lot-size"
-                      type="number"
-                      value={mlForm.lot_size}
-                      onChange={(e) => setMlForm({ ...mlForm, lot_size: parseInt(e.target.value) || 0 })}
-                      className="field !pl-4 !py-1.5"
-                    />
-                  </div>
-
-                  {/* Year Built */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Year Built</label>
-                    <input
-                      id="year-built"
-                      type="number" min="1800" max="2026"
-                      value={mlForm.year_built}
-                      onChange={(e) => setMlForm({ ...mlForm, year_built: parseInt(e.target.value) || 2000 })}
-                      className="field !pl-4 !py-1.5"
-                    />
-                  </div>
-
-                  {/* Condition */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Condition (1=Poor – 5=Excellent)</label>
-                    <select
-                      id="condition"
-                      value={mlForm.condition}
-                      onChange={(e) => setMlForm({ ...mlForm, condition: parseInt(e.target.value) })}
-                      className="field !pl-4 !py-1.5"
-                    >
-                      {[[1,"Poor"],[2,"Below Avg"],[3,"Average"],[4,"Good"],[5,"Excellent"]].map(([v,l]) =>
-                        <option key={v} value={v}>{v} — {l}</option>
-                      )}
-                    </select>
-                  </div>
-
-                  {/* Grade */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Grade (1-13, Avg=7)</label>
-                    <select
-                      id="grade"
-                      value={mlForm.grade}
-                      onChange={(e) => setMlForm({ ...mlForm, grade: parseInt(e.target.value) })}
-                      className="field !pl-4 !py-1.5"
-                    >
-                      {[1,2,3,4,5,6,7,8,9,10,11,12,13].map((v) =>
-                        <option key={v} value={v}>Grade {v}</option>
-                      )}
-                    </select>
-                  </div>
-
-                  {/* ZIP Code */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>ZIP Code (5-digit)</label>
-                    <input
-                      id="zip-code"
-                      type="text" maxLength={5}
-                      value={mlForm.zip_code}
-                      onChange={(e) => setMlForm({ ...mlForm, zip_code: e.target.value.replace(/\D/g, "").slice(0, 5) })}
-                      placeholder="e.g. 98001"
-                      className="field !pl-4 !py-1.5"
-                    />
-                  </div>
-
                   {/* Listed Price */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Asking Price ($) — Optional</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Listed Price (₹) *</label>
                     <input
                       id="listed-price"
                       type="number"
                       value={mlForm.listed_price}
                       onChange={(e) => setMlForm({ ...mlForm, listed_price: e.target.value })}
-                      placeholder="e.g. 450000"
+                      placeholder="e.g. 12000000"
                       className="field !pl-4 !py-1.5"
+                      required
                     />
                   </div>
 
@@ -566,14 +585,15 @@ export default function PropertyDetails() {
                   disabled={analysisLoading}
                   onClick={() => {
                     dispatch(fetchPropertyAnalysis({
+                      property_type:   mlForm.property_type,
+                      zip_code:        mlForm.zip_code, // represents Locality
                       bedrooms:        parseInt(mlForm.bedrooms),
-                      bathrooms:       parseFloat(mlForm.bathrooms),
+                      furnishing:      parseFloat(mlForm.furnishing),
+                      age:             parseInt(mlForm.age),
+                      total_floors:    parseInt(mlForm.total_floors),
+                      floors:          parseInt(mlForm.floors),
+                      balconies:       parseInt(mlForm.balconies),
                       sqft:            parseInt(mlForm.sqft),
-                      lot_size:        parseInt(mlForm.lot_size),
-                      year_built:      parseInt(mlForm.year_built),
-                      condition:       parseInt(mlForm.condition),
-                      grade:           parseInt(mlForm.grade),
-                      zip_code:        mlForm.zip_code,
                       listed_price:    mlForm.listed_price ? parseFloat(mlForm.listed_price) : null,
                     }));
                     setShowConfig(false);
@@ -604,20 +624,20 @@ export default function PropertyDetails() {
                   2. Analysis Reports
                 </h3>
 
-                {/* US Scorecards */}
+                {/* Mumbai Scorecards */}
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  {/* Estimated Value $ */}
+                  {/* Estimated Value ₹ */}
                   <div className="rounded-xl p-4 border flex flex-col gap-1.5" style={{ background: "var(--c-surface)", borderColor: "var(--c-border)" }}>
                     <div className="flex items-center gap-1.5" style={{ color: "var(--c-text-3)" }}>
                       <Gauge size={13} />
                       <span className="text-[10px] font-bold uppercase tracking-wider">Estimated Value</span>
                     </div>
                     <span className="text-lg font-bold" style={{ color: "var(--c-text-1)" }}>
-                      {analysis.m1?.estimated_value_fmt || fmtUSD(analysis.m1?.estimated_value)}
+                      {fmtINR(analysis.m1?.estimated_value)}
                     </span>
                     {analysis.m1?.ci_low && (
                       <span className="text-[9px]" style={{ color: "var(--c-text-4)" }}>
-                        Range: {fmtUSD(analysis.m1.ci_low)} – {fmtUSD(analysis.m1.ci_high)}
+                        Range: {fmtINR(analysis.m1.ci_low)} – {fmtINR(analysis.m1.ci_high)}
                       </span>
                     )}
                     {analysis.m1?.overvalued_flag && analysis.m1.overvalued_flag !== "fair" && (
@@ -627,14 +647,14 @@ export default function PropertyDetails() {
                     )}
                   </div>
 
-                  {/* Estimated Rent $/mo */}
+                  {/* Estimated Rent ₹/mo */}
                   <div className="rounded-xl p-4 border flex flex-col gap-1.5" style={{ background: "var(--c-surface)", borderColor: "var(--c-border)" }}>
                     <div className="flex items-center gap-1.5" style={{ color: "var(--c-text-3)" }}>
-                      <DollarSign size={13} />
+                      <span className="font-bold text-xs" style={{ color: "var(--c-text-3)" }}>₹</span>
                       <span className="text-[10px] font-bold uppercase tracking-wider">Est. Monthly Rent</span>
                     </div>
                     <span className="text-lg font-bold" style={{ color: "var(--c-text-1)" }}>
-                      {analysis.m2?.monthly_rent_fmt || fmtUSD(analysis.m2?.monthly_rent)}<span className="text-xs font-normal">/mo</span>
+                      {fmtINR(analysis.m2?.monthly_rent)}<span className="text-xs font-normal">/mo</span>
                     </span>
                     {analysis.m2?.gross_yield && (
                       <span className="text-[9px]" style={{ color: "var(--c-text-4)" }}>
@@ -642,7 +662,7 @@ export default function PropertyDetails() {
                       </span>
                     )}
                     <span className="text-[9px]" style={{ color: "var(--c-text-4)" }}>
-                      Avg US Yield: 5–8% p.a.
+                      Avg Mumbai Yield: 2–3.5% p.a.
                     </span>
                   </div>
 
@@ -653,13 +673,28 @@ export default function PropertyDetails() {
                       <span className="text-[10px] font-bold uppercase tracking-wider">Appreciation (12m)</span>
                     </div>
                     <span className="text-lg font-bold" style={{ color: "var(--c-success)" }}>
-                      +{(analysis.m3?.appreciation_12m_pct || 0).toFixed(1)}%
+                      {analysis.m3?.appreciation_12m_pct !== undefined ? (
+                        `+${(analysis.m3.appreciation_12m_pct).toFixed(1)}%`
+                      ) : (
+                        "N/A"
+                      )}
                     </span>
-                    {analysis.m3?.appreciation_6m_pct && (
-                      <span className="text-[9px]" style={{ color: "var(--c-text-4)" }}>
-                        6m forecast: +{analysis.m3.appreciation_6m_pct.toFixed(1)}%
-                      </span>
-                    )}
+                    <div className="text-xs text-slate-500 mt-1">
+                      {analysis.m3?.appreciation_3m_pct !== undefined && (
+                        <div className="mb-0.5">3m forecast: +{analysis.m3.appreciation_3m_pct.toFixed(1)}%</div>
+                      )}
+                      {analysis.m3?.appreciation_6m_pct !== undefined && (
+                        <div className="mb-0.5">6m forecast: +{analysis.m3.appreciation_6m_pct.toFixed(1)}%</div>
+                      )}
+                      {analysis.m3?.appreciation_9m_pct !== undefined && (
+                        <div className="mb-0.5">9m forecast: +{analysis.m3.appreciation_9m_pct.toFixed(1)}%</div>
+                      )}
+                      {analysis.m3?.ci_low_12m && analysis.m3?.ci_high_12m && (
+                        <div>
+                          12m Range: ₹{analysis.m3.ci_low_12m.toLocaleString('en-IN')} - ₹{analysis.m3.ci_high_12m.toLocaleString('en-IN')}
+                        </div>
+                      )}
+                    </div>
                     {analysis.m3?.confidence_band && (
                       <span className="text-[9px]" style={{ color: "var(--c-text-4)" }}>
                         Confidence: {analysis.m3.confidence_band}

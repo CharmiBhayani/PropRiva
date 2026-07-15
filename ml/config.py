@@ -1,8 +1,11 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+ROOT = Path(__file__).parent
+load_dotenv(ROOT.parent / ".env")
 
 # Paths
-ROOT = Path(__file__).parent
 DATA_RAW        = ROOT / "data" / "raw"
 DATA_PROCESSED  = ROOT / "data" / "processed"
 DATA_ZILLOW     = ROOT / "data" / "zillow"
@@ -19,30 +22,6 @@ OPENROUTER_APP_URL  = os.getenv("OPENROUTER_APP_URL",  "https://github.com/your-
 OPENROUTER_MODEL    = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "google/gemini-2.0-flash-001")
 GROQ_MODEL   = os.getenv("GROQ_MODEL",   "meta-llama/llama-3.3-70b-instruct")
-
-KC_COL_MAP = {
-    "id":            "property_id",
-    "date":          "sale_date",
-    "price":         "sale_price",
-    "bedrooms":      "bedrooms",
-    "bathrooms":     "bathrooms",
-    "sqft_living":   "sqft",
-    "sqft_lot":      "lot_size",
-    "floors":        "floors",
-    "waterfront":    "waterfront",
-    "view":          "view",
-    "condition":     "condition",
-    "grade":         "grade",
-    "sqft_above":    "sqft_above",
-    "sqft_basement": "sqft_basement",
-    "yr_built":      "year_built",
-    "yr_renovated":  "yr_renovated",
-    "zipcode":       "zip_code",
-    "lat":           "lat",
-    "long":          "lng",
-    "sqft_living15": "sqft_living15",
-    "sqft_lot15":    "sqft_lot15",
-}
 
 
 # Features sets for each model

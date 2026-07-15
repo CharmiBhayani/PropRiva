@@ -26,7 +26,7 @@ const register = async (req, res) => {
 
 };
 
-const verifyOtp = async(req,res)=>{
+const verifyOtp = async (req, res) => {
   try {
 
     const result = await authService.verifyOtp(

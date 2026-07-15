@@ -70,6 +70,7 @@ model Property {
   pincode       String
 
   rentAmount    Float
+  listedPrice   Float    @default(0)
 
   ownerId       Int
 

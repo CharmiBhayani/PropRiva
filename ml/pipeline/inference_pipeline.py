@@ -9,7 +9,6 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import DATA_ZILLOW, MODELS_DIR, BEDROOM_MULTIPLIER
-from data.cleaning import clean_zillow_wide
 from models.m1_market_value.model      import M1MarketValueModel
 from models.m2_rental_value.model      import M2RentalValueModel
 from models.m3_appreciation.model      import M3AppreciationModel
@@ -40,10 +39,15 @@ class RealEstateAdvisor:
             )
         try:
             raw = pd.read_csv(DATA_ZILLOW / "zhvi_zip.csv") 
-            self.zhvi_long = clean_zillow_wide(raw,value_col_name="zhvi")
-            log.info("ZHVI loaded")
+            # Melt wide format to long format
+            id_vars = [c for c in raw.columns if not c.startswith("20") and not c.startswith("19")]
+            long_df = raw.melt(id_vars=id_vars, var_name="Date", value_name="zhvi")
+            long_df["Date"] = pd.to_datetime(long_df["Date"], errors='coerce')
+            long_df["zip_code"] = long_df["RegionName"]
+            self.zhvi_long = long_df.dropna(subset=["Date", "zhvi"])
+            log.info("HPI loaded")
         except Exception as e:
-            log.warning("Could not load ZHVI: %s", e)
+            log.warning("Could not load HPI: %s", e)
             self.zhvi_long = None
     
 
@@ -69,7 +73,7 @@ class RealEstateAdvisor:
         # M3
         m3_path = models_dir / "m3_appreciation"
         try:
-            if (m3_path / "xgb_6m.pkl").exists():
+            if (m3_path / "appreciation_model.pkl").exists():
                 self.m3 = M3AppreciationModel().load(m3_path)
                 log.info("M3 (appreciation) loaded")
             else:
@@ -103,7 +107,8 @@ class RealEstateAdvisor:
         result = {"input": prop, "listed_price": listed_price}
 
         features = dict(prop)
-        zip_str  = str(features.get("zip_code", "00000")).zfill(5)
+        zip_str  = str(features.get("zip_code", "Thane"))
+        zip_str  = zip_str.zfill(5) if zip_str.isdigit() else zip_str
         features["zip_code_enc"] = int(
             self.zip_encoder.transform(pd.Series([zip_str]))[0]
         )
@@ -114,10 +119,10 @@ class RealEstateAdvisor:
             "bedroom_multiplier":    BEDROOM_MULTIPLIER.get(
                                          int(features.get("bedrooms", 3)), 1.0),
             "property_type_enc":     1,
-            "zori_at_month":         1_500.0,
+            "zori_at_month":         35_000.0,
             "zori_12m_growth":       0.04,
-            "rent_to_price_ratio":   0.006,
-            "zhvi_at_sale":          400_000.0,
+            "rent_to_price_ratio":   0.0025,
+            "zhvi_at_sale":          15_000_000.0,
             "zhvi_12m_growth":       0.07,
             "zhvi_3yr_cagr":         0.07,
             "inventory":             0.5,
@@ -126,6 +131,11 @@ class RealEstateAdvisor:
             "inventory_trend_pct":   0.05,
             "employment_hhi":        0.30,
             "vacancy_prob":          0.30,
+            "property_type":         "Residential Apartment",
+            "furnishing":            1.0,
+            "total_floors":          7.0,
+            "balconies":             1.0,
+            "floors":                3.0,
         }
         for k, v in defaults.items():
             features.setdefault(k, v)
@@ -142,15 +152,15 @@ class RealEstateAdvisor:
             prop_value = vp.estimated_value
             gap_pct    = vp.gap_pct
         else:
-            prop_value = listed_price or 300_000.0
+            prop_value = listed_price or 10_000_000.0
             gap_pct    = 0.0
             result["m1"] = {"estimated_value": prop_value, "note": "M1 not loaded"}
 
-        age = 2024 - int(features.get("year_built", 1990))
+        age = 2026 - int(features.get("year_built", 2020))
         annual_maint = (
             prop_value * 0.01
-            + (min(age, 20) / 20) * (12_000 / 20)
-            + (min(age, 15) / 15) * (8_000 / 15)
+            + (min(age, 20) / 20) * (200_000 / 20)
+            + (min(age, 15) / 15) * (100_000 / 15)
         )
         result["maintenance_heuristic"] = {
             "annual_maintenance":   round(annual_maint, 0),
@@ -164,17 +174,33 @@ class RealEstateAdvisor:
                 property_value=prop_value,
                 annual_maintenance=annual_maint,
             )
-            result["m2"] = {
-                "monthly_rent": rp.estimated_monthly_rent,
-                "gross_yield":  rp.gross_yield_pct,
-                "net_yield":    rp.net_yield_pct,
-            }
-            gross_yield  = rp.gross_yield_pct or 0.0
             monthly_rent = rp.estimated_monthly_rent
+            if listed_price and listed_price > 0:
+                gross_yield = (monthly_rent * 12) / listed_price * 100
+                net_yield = (monthly_rent * 12 - annual_maint) / listed_price * 100
+            else:
+                gross_yield = rp.gross_yield_pct or 0.0
+                net_yield = rp.net_yield_pct or 0.0
+
+            result["m2"] = {
+                "monthly_rent": monthly_rent,
+                "gross_yield":  gross_yield,
+                "net_yield":    net_yield,
+            }
         else:
-            gross_yield  = 5.0
-            monthly_rent = 1_500.0
-            result["m2"] = {"note": "M2 not loaded"}
+            monthly_rent = 35_000.0
+            if listed_price and listed_price > 0:
+                gross_yield = (monthly_rent * 12) / listed_price * 100
+                net_yield = (monthly_rent * 12 - annual_maint) / listed_price * 100
+            else:
+                gross_yield = 5.0
+                net_yield = 4.0
+            result["m2"] = {
+                "note": "M2 not loaded",
+                "monthly_rent": monthly_rent,
+                "gross_yield":  gross_yield,
+                "net_yield":    net_yield,
+            }
 
         appr_12m = 5.0
         if self.m3 and self.zhvi_long is not None:
@@ -182,9 +208,13 @@ class RealEstateAdvisor:
                 fc = self.m3.predict_zip(zip_str, self.zhvi_long)
                 result["m3"] = {
                     "current_zhvi":         fc.current_zhvi,
+                    "zhvi_3m":              fc.zhvi_3m,
                     "zhvi_6m":              fc.zhvi_6m,
+                    "zhvi_9m":              fc.zhvi_9m,
                     "zhvi_12m":             fc.zhvi_12m,
+                    "appreciation_3m_pct":  fc.appreciation_pct_3m,
                     "appreciation_6m_pct":  fc.appreciation_pct_6m,
+                    "appreciation_9m_pct":  fc.appreciation_pct_9m,
                     "appreciation_12m_pct": fc.appreciation_pct_12m,
                     "ci_low_12m":           fc.ci_low_12m,
                     "ci_high_12m":          fc.ci_high_12m,
@@ -203,10 +233,14 @@ class RealEstateAdvisor:
                 "appreciation_12m_pct": appr_12m,
             }
 
+        # Dynamically compute rent to price ratio using listed price if available, otherwise prop_value
+        denom = listed_price if (listed_price and listed_price > 0) else prop_value
+        rent_to_price_ratio = monthly_rent / (denom + 1e-9)
+
         ra = self.m6.score(
             inventory_trend_pct  = float(features.get("inventory_trend_pct", 0.05)),
             price_cut_pct        = float(features.get("price_cut_pct", 5.0)),
-            rent_to_price_ratio  = float(features.get("rent_to_price_ratio", 0.006)),
+            rent_to_price_ratio  = rent_to_price_ratio,
             employment_hhi       = float(features.get("employment_hhi", 0.30)),
         )
         result["m6"] = {

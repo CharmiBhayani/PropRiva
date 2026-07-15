@@ -45,7 +45,7 @@ class M6RiskModel:
     def _score_rent_price_compression(rent_to_price_ratio: float) -> float:
         if rent_to_price_ratio is None or np.isnan(rent_to_price_ratio):
             return 30.0
-        risk = (0.010 - rent_to_price_ratio) / (0.010 - 0.003 + 1e-9) * 100
+        risk = (0.004 - rent_to_price_ratio) / (0.004 - 0.0018 + 1e-9) * 100
         return float(np.clip(risk, 0, 100))
 
     @staticmethod
@@ -68,7 +68,7 @@ class M6RiskModel:
         factor_raw = {
             "zhvi_volatility": self._score_zhvi_volatility(
                 zhvi_series if zhvi_series is not None
-                else pd.Series([350_000.0] * 24)
+                else pd.Series([15_000_000.0] * 24)
             ),
             "inventory_spike":          self._score_inventory_spike(inventory_trend_pct),
             "price_cut_trend":          self._score_price_cut_trend(price_cut_pct),
@@ -118,7 +118,7 @@ class M6RiskModel:
                 inventory_trend_pct  = float(row.get("inventory_trend_pct",
                                               row.get("inventory_trend", 0.05))),
                 price_cut_pct        = float(row.get("price_cut_pct", 5.0)),
-                rent_to_price_ratio  = float(row.get("rent_to_price_ratio", 0.006)),
+                rent_to_price_ratio  = float(row.get("rent_to_price_ratio", 0.0025)),
                 employment_hhi       = float(row.get("employment_hhi", 0.30)),
             )
             results.append({

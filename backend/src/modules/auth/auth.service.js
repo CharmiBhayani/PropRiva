@@ -130,7 +130,7 @@ const login = async (data) => {
     {
       id: user.id,
       email: user.email,
-       role: user.role,
+      role: user.role,
     },
     process.env.JWT_SECRET,
     {
@@ -196,7 +196,7 @@ const resendOtp = async (
   return {
     message:
       "OTP resent successfully",
-    };
+  };
 };
 
 module.exports = {

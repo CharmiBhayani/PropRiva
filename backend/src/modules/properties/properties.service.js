@@ -19,6 +19,7 @@ const createProperty = async (
         pincode: data.pincode,
 
         rentAmount: data.rentAmount,
+        listedPrice: data.listedPrice ? parseFloat(data.listedPrice) : 0,
 
         ownerId,
       },

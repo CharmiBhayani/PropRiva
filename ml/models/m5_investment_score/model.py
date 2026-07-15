@@ -25,7 +25,7 @@ class M5InvestmentScorer:
    
     @staticmethod
     def _yield_score(gross_yield_pct: float) -> float:
-        return float(np.clip(gross_yield_pct / 8.0 * 100, 0, 100))
+        return float(np.clip(gross_yield_pct / 4.0 * 100, 0, 100))
 
     @staticmethod
     def _appreciation_score(appreciation_pct_12m: float) -> float:
@@ -108,14 +108,14 @@ class M5InvestmentScorer:
         results = []
         for _, row in df.iterrows():
             val_col  = "m1_estimated_value" if "m1_estimated_value" in row.index else "sale_price"
-            prop_val = float(row.get(val_col, 300_000))
+            prop_val = float(row.get(val_col, 10_000_000))
             sc = self.score(
-                gross_yield_pct      = float(row.get("m2_gross_yield", 5.0)),
+                gross_yield_pct      = float(row.get("m2_gross_yield", 3.0)),
                 appreciation_pct_12m = float(row.get("m3_appreciation_pct_12m",
                                               row.get("appreciation_pct_12m", 5.0))),
                 value_gap_pct        = float(row.get("m1_gap_pct", 0.0)),
                 vacancy_prob         = float(row.get("vacancy_prob", 0.30)),
-                annual_maintenance   = float(row.get("annual_maintenance", 3_000)),
+                annual_maintenance   = float(row.get("annual_maintenance", 100_000)),
                 property_value       = prop_val,
             )
             results.append({

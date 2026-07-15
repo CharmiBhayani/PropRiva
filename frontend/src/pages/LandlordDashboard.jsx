@@ -290,7 +290,7 @@ export default function LandlordDashboard() {
   const { data: portfolioData, loading: portfolioLoading, error: portfolioError } = useSelector((s) => s.advisory.portfolio);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({
-    title: "", description: "", address: "", city: "", state: "", pincode: "", rentAmount: "",
+    title: "", description: "", address: "", city: "", state: "MH", pincode: "", rentAmount: "", listedPrice: "",
   });
   const [errs, setErrs] = useState({});
   const [showPortfolioMl, setShowPortfolioMl] = useState(false);
@@ -319,18 +319,18 @@ export default function LandlordDashboard() {
     const e = {};
     if (!form.title.trim())   e.title   = "Title is required";
     if (!form.address.trim()) e.address = "Address is required";
-    if (!form.city.trim())    e.city    = "City is required";
+    if (!form.city.trim())    e.city    = "Locality is required";
     if (!form.state.trim())   e.state   = "State is required";
-    if (!form.pincode.trim()) e.pincode = "ZIP Code is required";
-    else if (!/^\d{5}$/.test(form.pincode)) e.pincode = "Enter a valid 5-digit ZIP code";
     if (!form.rentAmount) e.rentAmount = "Rent amount is required";
     else if (isNaN(form.rentAmount) || Number(form.rentAmount) <= 0) e.rentAmount = "Must be a positive number";
+    if (!form.listedPrice) e.listedPrice = "Listed price is required";
+    else if (isNaN(form.listedPrice) || Number(form.listedPrice) <= 0) e.listedPrice = "Must be a positive number";
     setErrs(e);
     return Object.keys(e).length === 0;
   };
 
   const openModal = () => {
-    setForm({ title: "", description: "", address: "", city: "", state: "", pincode: "", rentAmount: "" });
+    setForm({ title: "", description: "", address: "", city: "", state: "MH", pincode: "", rentAmount: "", listedPrice: "" });
     setErrs({});
     dispatch(clearPropertyError());
     setModalOpen(true);
@@ -339,7 +339,12 @@ export default function LandlordDashboard() {
   const handleCreate = (e) => {
     e.preventDefault();
     if (!validate()) return;
-    dispatch(createProperty({ ...form, rentAmount: parseFloat(form.rentAmount) }))
+    dispatch(createProperty({ 
+      ...form, 
+      pincode: form.city, // Store locality name in pincode column
+      rentAmount: parseFloat(form.rentAmount), 
+      listedPrice: parseFloat(form.listedPrice) 
+    }))
       .then((action) => { if (!action.error) setModalOpen(false); });
   };
 
@@ -355,6 +360,11 @@ export default function LandlordDashboard() {
     background: "var(--c-surface)",
     border: "1.5px solid var(--c-border)",
     color: "var(--c-text-1)",
+  };
+
+  const fmtINR = (v) => {
+    if (!v && v !== 0) return "N/A";
+    return `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
   };
 
   return (
@@ -380,7 +390,7 @@ export default function LandlordDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {[
           { icon: Building2, label: "Total Listed",    value: properties.length, suffix: null,   iconBg: "var(--c-brand-subtle)",       iconColor: "var(--c-brand)" },
-          { icon: Landmark,  label: "Portfolio Value", value: `$${totalRent.toLocaleString()}`, suffix: "/mo", iconBg: "rgba(16,185,129,0.1)", iconColor: "var(--c-success)" },
+          { icon: Landmark,  label: "Portfolio Value", value: fmtINR(totalRent), suffix: "/mo", iconBg: "rgba(16,185,129,0.1)", iconColor: "var(--c-success)" },
         ].map(({ icon: Icon, label, value, suffix, iconBg, iconColor }) => (
           <div
             key={label}
@@ -464,7 +474,7 @@ export default function LandlordDashboard() {
                   <div className="rounded-xl p-4 border flex flex-col gap-1" style={{ background: "var(--c-surface-2)", borderColor: "var(--c-border)" }}>
                     <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Est. Market Value</span>
                     <span className="text-lg font-bold" style={{ color: "var(--c-text-1)" }}>
-                      ${portfolioData.summary.total_value?.toLocaleString("en-US")}
+                      {fmtINR(portfolioData.summary.total_value)}
                     </span>
                     <span className="text-[9px] text-[var(--c-text-4)]">
                       {portfolioData.summary.property_count} properties
@@ -475,10 +485,10 @@ export default function LandlordDashboard() {
                   <div className="rounded-xl p-4 border flex flex-col gap-1" style={{ background: "var(--c-surface-2)", borderColor: "var(--c-border)" }}>
                     <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--c-text-3)" }}>Net Annual Income</span>
                     <span className="text-lg font-bold" style={{ color: "var(--c-text-1)" }}>
-                      ${portfolioData.summary.net_annual_income?.toLocaleString("en-US")}
+                      {fmtINR(portfolioData.summary.net_annual_income)}
                     </span>
                     <span className="text-[9px] text-[var(--c-text-4)]">
-                      Rent: ${portfolioData.summary.total_annual_rent?.toLocaleString("en-US")}/yr
+                      Rent: {fmtINR(portfolioData.summary.total_annual_rent)}/yr
                     </span>
                   </div>
 
@@ -601,8 +611,8 @@ export default function LandlordDashboard() {
                     <span className="truncate">{p.address}, {p.city}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <DollarSign size={13} style={{ color: "var(--c-success)" }} className="shrink-0" />
-                    <span className="font-bold" style={{ color: "var(--c-text-1)" }}>${p.rentAmount?.toLocaleString()}</span>
+                    <span className="font-bold text-lg" style={{ color: "var(--c-success)" }}>₹</span>
+                    <span className="font-bold" style={{ color: "var(--c-text-1)" }}>{p.rentAmount?.toLocaleString("en-IN")}</span>
                     <span style={{ color: "var(--c-text-3)" }}>/ month</span>
                   </div>
                 </div>
@@ -672,7 +682,7 @@ export default function LandlordDashboard() {
 
               <F label="Property Title *" error={errs.title}>
                 <input type="text" name="title" value={form.title} onChange={handleChange}
-                  placeholder="e.g. 3 Bedroom House in Seattle"
+                  placeholder="e.g. 2 BHK Apartment in Thane"
                   className={inp(errs.title)} style={inputStyle} required />
               </F>
 
@@ -688,38 +698,49 @@ export default function LandlordDashboard() {
 
               <F label="Address *" error={errs.address}>
                 <input type="text" name="address" value={form.address} onChange={handleChange}
-                  placeholder="Street / Building" className={inp(errs.address)} style={inputStyle} required />
+                  placeholder="Street / Building / Locality" className={inp(errs.address)} style={inputStyle} required />
               </F>
 
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { name: "city",    label: "City *",    ph: "Seattle" },
-                  { name: "state",   label: "State *",   ph: "WA" },
-                  { name: "pincode", label: "ZIP Code *", ph: "98001" },
-                ].map(({ name, label, ph }) => (
-                  <F key={name} label={label} error={errs[name]}>
-                    <input type="text" name={name} value={form[name]} onChange={handleChange}
-                      placeholder={ph} className={inp(errs[name])} style={inputStyle} required />
-                  </F>
-                ))}
+              <div className="grid grid-cols-2 gap-3">
+                <F label="Locality *" error={errs.city}>
+                  <select name="city" value={form.city} onChange={handleChange}
+                    className={inp(errs.city, "!pl-4 !py-2.5")} style={inputStyle} required>
+                    <option value="">Select Locality</option>
+                    {[
+                      'Central Mumbai suburbs', 'Mira Road And Beyond', 'Mumbai Andheri-Dahisar', 
+                      'Mumbai Beyond Thane', 'Mumbai Harbour', 'Mumbai South West', 
+                      'Navi Mumbai', 'South Mumbai', 'Thane'
+                    ].map((loc) => <option key={loc} value={loc}>{loc}</option>)}
+                  </select>
+                </F>
+
+                <F label="State *" error={errs.state}>
+                  <input type="text" name="state" value={form.state} onChange={handleChange}
+                    placeholder="MH" className={inp(errs.state)} style={inputStyle} required />
+                </F>
               </div>
 
-              <F label="Monthly Rent ($) *" error={errs.rentAmount}>
-                <div className="relative">
-                  <span
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold pointer-events-none text-sm"
-                    style={{ color: "var(--c-text-3)" }}
-                  >$</span>
-                  <input type="number" name="rentAmount" value={form.rentAmount} onChange={handleChange}
-                    placeholder="2500"
-                    className={`pl-8 pr-4 py-2.5 w-full rounded-xl text-sm outline-none transition-all duration-150 ${errs.rentAmount ? "field-error" : ""}`}
-                    style={inputStyle}
-                    onFocus={(e) => { if (!errs.rentAmount) { e.target.style.borderColor = "var(--c-brand)"; e.target.style.boxShadow = "0 0 0 3px var(--c-brand-ring)"; }}}
-                    onBlur={(e) => { e.target.style.boxShadow = "none"; if (!errs.rentAmount) e.target.style.borderColor = "var(--c-border)"; }}
-                    required
-                  />
-                </div>
-              </F>
+              <div className="grid grid-cols-2 gap-3">
+                <F label="Monthly Rent (₹) *" error={errs.rentAmount}>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold pointer-events-none text-sm" style={{ color: "var(--c-text-3)" }}>₹</span>
+                    <input type="number" name="rentAmount" value={form.rentAmount} onChange={handleChange}
+                      placeholder="35000"
+                      className={`pl-8 pr-4 py-2.5 w-full rounded-xl text-sm outline-none transition-all duration-150 ${errs.rentAmount ? "field-error" : ""}`}
+                      style={inputStyle} required />
+                  </div>
+                </F>
+
+                <F label="Listed Price (₹) *" error={errs.listedPrice}>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold pointer-events-none text-sm" style={{ color: "var(--c-text-3)" }}>₹</span>
+                    <input type="number" name="listedPrice" value={form.listedPrice} onChange={handleChange}
+                      placeholder="12000000"
+                      className={`pl-8 pr-4 py-2.5 w-full rounded-xl text-sm outline-none transition-all duration-150 ${errs.listedPrice ? "field-error" : ""}`}
+                      style={inputStyle} required />
+                  </div>
+                </F>
+              </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t" style={{ borderColor: "var(--c-border)" }}>
                 <button type="button" onClick={() => setModalOpen(false)} className="btn-ghost !py-2 !px-4 !text-sm">
