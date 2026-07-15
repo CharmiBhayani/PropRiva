@@ -15,7 +15,7 @@ from data.cleaning import clean_mumbai_data, clean_nhb_residex
 from models.m1_market_value.model import M1MarketValueModel
 from models.m2_rental_value.model import M2RentalValueModel
 from models.m3_appreciation.model import M3AppreciationModel
-from config import DATA_ZILLOW, MODELS_DIR
+from config import DATA_PROCESSED, MODELS_DIR
 from data.features import ZipEncoder
 
 logging.basicConfig(
@@ -68,7 +68,7 @@ def generate_synthetic_rent(df: pd.DataFrame) -> pd.DataFrame:
 def save_residex_to_wide(cleaned_hpi: pd.DataFrame, cities: list):
     """Pivots HPI to wide format and replicates for all unique Mumbai cities.
 
-    Saves to DATA_ZILLOW / "zhvi_zip.csv" and "zori_zip.csv" to preserve
+    Saves to DATA_PROCESSED / "zhvi_zip.csv" and "zori_zip.csv" to preserve
     compatibility with Zillow wide-format loader in inference.
 
     Args:
@@ -90,10 +90,10 @@ def save_residex_to_wide(cleaned_hpi: pd.DataFrame, cities: list):
         
     wide_df = pd.concat(rows, ignore_index=True)
     
-    DATA_ZILLOW.mkdir(parents=True, exist_ok=True)
-    wide_df.to_csv(DATA_ZILLOW / "zhvi_zip.csv", index=False)
-    wide_df.to_csv(DATA_ZILLOW / "zori_zip.csv", index=False)
-    log.info("Saved pivoted HPI data to Zillow wide format in: %s", DATA_ZILLOW)
+    DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
+    wide_df.to_csv(DATA_PROCESSED / "zhvi_zip.csv", index=False)
+    wide_df.to_csv(DATA_PROCESSED / "zori_zip.csv", index=False)
+    log.info("Saved pivoted HPI data to Zillow wide format in: %s", DATA_PROCESSED)
 
 
 def run():

@@ -8,7 +8,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import DATA_ZILLOW, MODELS_DIR, BEDROOM_MULTIPLIER
+from config import DATA_PROCESSED, MODELS_DIR, BEDROOM_MULTIPLIER
 from models.m1_market_value.model      import M1MarketValueModel
 from models.m2_rental_value.model      import M2RentalValueModel
 from models.m3_appreciation.model      import M3AppreciationModel
@@ -38,7 +38,7 @@ class RealEstateAdvisor:
                 info.get("provider"), info.get("model"), info.get("key_set"),
             )
         try:
-            raw = pd.read_csv(DATA_ZILLOW / "zhvi_zip.csv") 
+            raw = pd.read_csv(DATA_PROCESSED / "zhvi_zip.csv") 
             # Melt wide format to long format
             id_vars = [c for c in raw.columns if not c.startswith("20") and not c.startswith("19")]
             long_df = raw.melt(id_vars=id_vars, var_name="Date", value_name="zhvi")
