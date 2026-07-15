@@ -500,7 +500,7 @@ export default function PropertyDetails() {
                       id="property-age"
                       type="number" min="0" max="100"
                       value={mlForm.age}
-                      onChange={(e) => setMlForm({ ...mlForm, age: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setMlForm({ ...mlForm, age: e.target.value === '' ? '' : parseInt(e.target.value) })}
                       className="field !pl-4 !py-1.5"
                     />
                   </div>
@@ -512,7 +512,7 @@ export default function PropertyDetails() {
                       id="total-floors"
                       type="number" min="1" max="100"
                       value={mlForm.total_floors}
-                      onChange={(e) => setMlForm({ ...mlForm, total_floors: parseInt(e.target.value) || 1 })}
+                      onChange={(e) => setMlForm({ ...mlForm, total_floors: e.target.value === '' ? '' : parseInt(e.target.value) })}
                       className="field !pl-4 !py-1.5"
                     />
                   </div>
@@ -524,7 +524,7 @@ export default function PropertyDetails() {
                       id="floor-number"
                       type="number" min="0" max="100"
                       value={mlForm.floors}
-                      onChange={(e) => setMlForm({ ...mlForm, floors: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setMlForm({ ...mlForm, floors: e.target.value === '' ? '' : parseInt(e.target.value) })}
                       className="field !pl-4 !py-1.5"
                     />
                   </div>
@@ -549,7 +549,7 @@ export default function PropertyDetails() {
                       id="area-sqft"
                       type="number"
                       value={mlForm.sqft}
-                      onChange={(e) => setMlForm({ ...mlForm, sqft: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setMlForm({ ...mlForm, sqft: e.target.value === '' ? '' : parseInt(e.target.value) })}
                       className="field !pl-4 !py-1.5"
                     />
                   </div>

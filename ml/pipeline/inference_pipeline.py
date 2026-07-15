@@ -269,15 +269,25 @@ class RealEstateAdvisor:
         }
 
         if self.enable_llm and add_llm_narrative:
-            llm_ctx = self.m5.to_llm_context(sc, {
+            llm_meta = {
                 "estimated_value": prop_value,
                 "monthly_rent":    monthly_rent,
                 "zip_code":        zip_str,
                 "bedrooms":        features.get("bedrooms"),
                 "sqft":            features.get("sqft"),
-            })
+                "age":             features.get("age"),
+                "total_floors":    features.get("total_floors"),
+                "floors":          features.get("floors"),
+                "balconies":       features.get("balconies"),
+                "furnishing":      features.get("furnishing"),
+                "property_type":   features.get("property_type"),
+            }
+            llm_ctx = self.m5.to_llm_context(sc, llm_meta)
             result["m5"]["narrative"] = generate_investment_narrative(llm_ctx)
-            result["m6"]["narrative"] = generate_risk_narrative(ra.narrative_inputs)
+            
+            risk_ctx = ra.narrative_inputs.copy()
+            risk_ctx.update(llm_meta)
+            result["m6"]["narrative"] = generate_risk_narrative(risk_ctx)
 
         return result
 
