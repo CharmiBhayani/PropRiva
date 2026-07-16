@@ -139,7 +139,7 @@ def analyse_portfolio(body: PortfolioInput):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-@app.post("/zip/appreciation", summary="M3 quarterly appreciation forecast for a locality")
+@app.post("/zip/appreciation", summary="M3 quarterly appreciation forecast for a Mumbai locality")
 def zip_appreciation(body: ZipForecastInput):
     try:
         advisor = get_advisor()

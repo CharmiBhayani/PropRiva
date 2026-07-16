@@ -38,17 +38,18 @@ class RealEstateAdvisor:
                 info.get("provider"), info.get("model"), info.get("key_set"),
             )
         try:
-            raw = pd.read_csv(DATA_PROCESSED / "zhvi_zip.csv") 
+            raw = pd.read_csv(DATA_PROCESSED / "hpi_city.csv")
             # Melt wide format to long format
             id_vars = [c for c in raw.columns if not c.startswith("20") and not c.startswith("19")]
-            long_df = raw.melt(id_vars=id_vars, var_name="Date", value_name="zhvi")
-            long_df["Date"] = pd.to_datetime(long_df["Date"], errors='coerce')
-            long_df["zip_code"] = long_df["RegionName"]
-            self.zhvi_long = long_df.dropna(subset=["Date", "zhvi"])
-            log.info("HPI loaded")
+            long_df = raw.melt(id_vars=id_vars, var_name="Date", value_name="hpi")
+            long_df["Date"]     = pd.to_datetime(long_df["Date"], errors="coerce")
+            long_df["locality"] = long_df["RegionName"].astype(str).str.strip()
+            long_df             = long_df.rename(columns={"Date": "date"})
+            self.hpi_long       = long_df.dropna(subset=["date", "hpi"])
+            log.info("NHB Residex HPI loaded: %d locality-quarter rows", len(self.hpi_long))
         except Exception as e:
-            log.warning("Could not load HPI: %s", e)
-            self.zhvi_long = None
+            log.warning("Could not load HPI data: %s", e)
+            self.hpi_long = None
     
 
     def _load_models(self, models_dir: Path) -> None:
@@ -107,10 +108,12 @@ class RealEstateAdvisor:
         result = {"input": prop, "listed_price": listed_price}
 
         features = dict(prop)
-        zip_str  = str(features.get("zip_code", "Thane"))
-        zip_str  = zip_str.zfill(5) if zip_str.isdigit() else zip_str
+        locality_str = str(features.get("zip_code",
+                           features.get("locality", "Thane"))).strip()
+        features["zip_code"]    = locality_str   # keep key consistent for M1/M2
+        features["CITY"]        = locality_str
         features["zip_code_enc"] = int(
-            self.zip_encoder.transform(pd.Series([zip_str]))[0]
+            self.zip_encoder.transform(pd.Series([locality_str]))[0]
         )
 
         defaults = {
@@ -119,12 +122,7 @@ class RealEstateAdvisor:
             "bedroom_multiplier":    BEDROOM_MULTIPLIER.get(
                                          int(features.get("bedrooms", 3)), 1.0),
             "property_type_enc":     1,
-            "zori_at_month":         35_000.0,
-            "zori_12m_growth":       0.04,
             "rent_to_price_ratio":   0.0025,
-            "zhvi_at_sale":          15_000_000.0,
-            "zhvi_12m_growth":       0.07,
-            "zhvi_3yr_cagr":         0.07,
             "inventory":             0.5,
             "market_heat":           50.0,
             "price_cut_pct":         5.0,
@@ -203,26 +201,27 @@ class RealEstateAdvisor:
             }
 
         appr_quarterly = 5.0
-        if self.m3 and self.zhvi_long is not None:
+        if self.m3 and self.hpi_long is not None:
             try:
-                fc = self.m3.predict_zip(zip_str, self.zhvi_long)
+                fc = self.m3.predict_locality(locality_str, self.hpi_long)
                 result["m3"] = {
-                    "current_hpi":              fc.current_hpi,
-                    "hpi_1q":                   fc.hpi_1q,
-                    "hpi_2q":                   fc.hpi_2q,
-                    "hpi_3q":                   fc.hpi_3q,
-                    "hpi_4q":                   fc.hpi_4q,
-                    "appreciation_pct_1q":       fc.appreciation_pct_1q,
-                    "appreciation_pct_2q":       fc.appreciation_pct_2q,
-                    "appreciation_pct_3q":       fc.appreciation_pct_3q,
-                    "appreciation_pct_4q":       fc.appreciation_pct_4q,
-                    "ci_low_4q":                fc.ci_low_4q,
-                    "ci_high_4q":               fc.ci_high_4q,
-                    "confidence_band":           fc.confidence_band,
+                    "locality":                  fc.locality,
+                    "current_hpi":               fc.current_hpi,
+                    "hpi_1q":                    fc.hpi_1q,
+                    "hpi_2q":                    fc.hpi_2q,
+                    "hpi_3q":                    fc.hpi_3q,
+                    "hpi_4q":                    fc.hpi_4q,
+                    "appreciation_pct_1q":        fc.appreciation_pct_1q,
+                    "appreciation_pct_2q":        fc.appreciation_pct_2q,
+                    "appreciation_pct_3q":        fc.appreciation_pct_3q,
+                    "appreciation_pct_4q":        fc.appreciation_pct_4q,
+                    "ci_low_4q":                 fc.ci_low_4q,
+                    "ci_high_4q":                fc.ci_high_4q,
+                    "confidence_band":            fc.confidence_band,
                 }
                 appr_quarterly = fc.appreciation_pct_1q
             except Exception as exc:
-                log.warning("M3 predict_zip failed: %s", exc)
+                log.warning("M3 predict_locality failed: %s", exc)
                 result["m3"] = {
                     "note": f"M3 forecast unavailable: {exc}",
                     "appreciation_pct_1q": appr_quarterly,
@@ -272,7 +271,7 @@ class RealEstateAdvisor:
             llm_meta = {
                 "estimated_value": prop_value,
                 "monthly_rent":    monthly_rent,
-                "zip_code":        zip_str,
+                "locality":        locality_str,
                 "bedrooms":        features.get("bedrooms"),
                 "sqft":            features.get("sqft"),
                 "age":             features.get("age"),
@@ -303,12 +302,15 @@ class RealEstateAdvisor:
     
     def forecast_appreciation(
         self,
-        zip_code: str,
+        locality: str,
     ) -> dict:
+        """Returns M3 quarterly HPI appreciation forecast for a Mumbai locality."""
         if self.m3 is None:
             return {"error": "M3 not trained — provide NHB Residex CSV and re-run training."}
+        if self.hpi_long is None:
+            return {"error": "HPI data not loaded — check data/processed/hpi_city.csv."}
         try:
-            fc = self.m3.predict_zip(zip_code, self.zhvi_long)
+            fc = self.m3.predict_locality(locality, self.hpi_long)
             return vars(fc)
         except Exception as e:
             return {"error": str(e)}

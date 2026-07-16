@@ -23,10 +23,11 @@ class RiskAssessment:
 class M6RiskModel:
 
     @staticmethod
-    def _score_zhvi_volatility(zhvi_series: pd.Series) -> float:
-        if zhvi_series is None or len(zhvi_series) < 6:
+    def _score_hpi_volatility(hpi_series: pd.Series) -> float:
+        """Score based on NHB Residex HPI coefficient of variation."""
+        if hpi_series is None or len(hpi_series) < 6:
             return 50.0
-        cv = zhvi_series.std() / (zhvi_series.mean() + 1e-9)
+        cv = hpi_series.std() / (hpi_series.mean() + 1e-9)
         return float(np.clip(cv / 0.20 * 100, 0, 100))
 
     @staticmethod
@@ -66,7 +67,7 @@ class M6RiskModel:
     ) -> RiskAssessment:
 
         factor_raw = {
-            "zhvi_volatility": self._score_zhvi_volatility(
+            "hpi_volatility": self._score_hpi_volatility(
                 zhvi_series if zhvi_series is not None
                 else pd.Series([15_000_000.0] * 24)
             ),
@@ -95,7 +96,7 @@ class M6RiskModel:
             "risk_score":               round(risk_score, 1),
             "risk_tier":                risk_tier,
             "top_factors":              top_factors,
-            "zhvi_volatility_score":    round(factor_raw["zhvi_volatility"], 1),
+            "hpi_volatility_score":     round(factor_raw["hpi_volatility"], 1),
             "inventory_spike_score":    round(factor_raw["inventory_spike"], 1),
             "price_cut_score":          round(factor_raw["price_cut_trend"], 1),
             "rent_compression_score":   round(factor_raw["rent_price_compression"], 1),

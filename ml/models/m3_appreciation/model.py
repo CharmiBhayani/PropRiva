@@ -18,7 +18,7 @@ MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
 @dataclass
 class AppreciationForecast:
-    zip_code:             str
+    locality:             str       # City / sub-market name (e.g. "Thane")
     current_hpi:          float
     hpi_1q:               float     # 1 quarter ahead
     hpi_2q:               float     # 2 quarters ahead
@@ -126,87 +126,121 @@ class M3AppreciationModel:
         )
         return metrics
 
+    def predict_locality(
+        self,
+        locality: str,
+        hpi_df: pd.DataFrame,
+        as_of_date: Optional[pd.Timestamp] = None,
+    ) -> AppreciationForecast:
+        """Forecasts HPI appreciation for a specific Mumbai locality / city.
+
+        Args:
+            locality:    City / sub-market name (e.g. "Thane", "Central Mumbai suburbs").
+            hpi_df:      Long-format HPI DataFrame with columns: locality, date, hpi.
+            as_of_date:  Optional cutoff date (use data up to this date only).
+
+        Returns:
+            AppreciationForecast dataclass.
+        """
+        assert self.is_fitted
+
+        df_loc = hpi_df.copy()
+
+        # Normalise column names
+        if "hpi" not in df_loc.columns:
+            for alias in ["value", "zhvi"]:
+                if alias in df_loc.columns:
+                    df_loc = df_loc.rename(columns={alias: "hpi"})
+                    break
+
+        locality_col = "locality" if "locality" in df_loc.columns else "zip_code"
+        df_loc["date"] = pd.to_datetime(df_loc["date"])
+
+        # Filter to requested locality
+        sub = (
+            df_loc[df_loc[locality_col].astype(str).str.strip() == str(locality).strip()]
+            .sort_values("date")
+            .reset_index(drop=True)
+        )
+        if sub.empty:
+            # Fallback: use the first available locality
+            fallback = df_loc[locality_col].iloc[0]
+            sub = (
+                df_loc[df_loc[locality_col] == fallback]
+                .sort_values("date")
+                .reset_index(drop=True)
+            )
+            log.warning(
+                "Locality '%s' not found in HPI data. Falling back to '%s'.",
+                locality, fallback,
+            )
+
+        if as_of_date:
+            sub = sub[sub["date"] <= as_of_date]
+
+        if len(sub) < 4:
+            raise ValueError(
+                f"Insufficient historical HPI data for locality '{locality}' "
+                f"(need ≥ 4 quarters, found {len(sub)})."
+            )
+
+        lag_window = sub["hpi"].values[-4:]
+        current_hpi = float(lag_window[-1])
+
+        latest_date = pd.to_datetime(sub.iloc[-1]["date"])
+        feature_dict = {
+            "lag_1":   lag_window[-1],
+            "lag_2":   lag_window[-2],
+            "lag_3":   lag_window[-3],
+            "lag_4":   lag_window[-4],
+            "year":    latest_date.year,
+            "quarter": latest_date.quarter,
+            "trend":   len(sub) - 1,
+        }
+
+        X = pd.DataFrame([feature_dict])[self.features]
+
+        pred_3m  = float(self.model_3m.predict(X)[0])
+        pred_6m  = float(self.model_6m.predict(X)[0])
+        pred_9m  = float(self.model_9m.predict(X)[0])
+        pred_12m = float(self.model_12m.predict(X)[0])
+
+        app_1q = (pred_3m  - current_hpi) / current_hpi * 100
+        app_2q = (pred_6m  - current_hpi) / current_hpi * 100
+        app_3q = (pred_9m  - current_hpi) / current_hpi * 100
+        app_4q = (pred_12m - current_hpi) / current_hpi * 100
+
+        ci_low  = pred_12m - 1.96 * self.residual_std_12m
+        ci_high = pred_12m + 1.96 * self.residual_std_12m
+
+        band_pct       = (ci_high - ci_low) / (pred_12m + 1e-9) * 100
+        confidence_band = "narrow" if band_pct < 8 else ("moderate" if band_pct < 20 else "wide")
+
+        return AppreciationForecast(
+            locality=locality,
+            current_hpi=round(current_hpi, 2),
+            hpi_1q=round(pred_3m,  2),
+            hpi_2q=round(pred_6m,  2),
+            hpi_3q=round(pred_9m,  2),
+            hpi_4q=round(pred_12m, 2),
+            appreciation_pct_1q=round(app_1q, 2),
+            appreciation_pct_2q=round(app_2q, 2),
+            appreciation_pct_3q=round(app_3q, 2),
+            appreciation_pct_4q=round(app_4q, 2),
+            ci_low_4q=round(ci_low,  2),
+            ci_high_4q=round(ci_high, 2),
+            confidence_band=confidence_band,
+        )
+
+    # Keep old name as alias for backwards compatibility with pickled models
     def predict_zip(
         self,
         zip_code: str,
         zhvi_long: pd.DataFrame,
         as_of_date: Optional[pd.Timestamp] = None,
     ) -> AppreciationForecast:
-        """Forecasts HPI appreciation for a specific city / region."""
-        assert self.is_fitted
-        
-        df_zip = zhvi_long.copy()
-        if "value" in df_zip.columns:
-            df_zip = df_zip.rename(columns={"value": "zhvi"})
-        elif "hpi" in df_zip.columns:
-            df_zip = df_zip.rename(columns={"hpi": "zhvi"})
-            
-        df_zip["date"] = pd.to_datetime(df_zip["date"])
-        
-        sub = df_zip[df_zip["zip_code"].astype(str) == str(zip_code)].sort_values("date").reset_index(drop=True)
-        if sub.empty:
-            fallback_city = df_zip["zip_code"].iloc[0]
-            sub = df_zip[df_zip["zip_code"] == fallback_city].sort_values("date").reset_index(drop=True)
-            log.warning("ZIP/City '%s' not found. Falling back to HPI of '%s'.", zip_code, fallback_city)
-
-        if as_of_date:
-            sub = sub[sub["date"] <= as_of_date]
-
-        if len(sub) < 4:
-            raise ValueError(f"Insufficient historical index data for {zip_code} (need at least 4 quarters). Found: {len(sub)}")
-
-        lag_window = sub["zhvi"].values[-4:]
-        current_hpi = lag_window[-1]
-        
-        latest_row = sub.iloc[-1]
-        latest_date = pd.to_datetime(latest_row["date"])
-        
-        feature_dict = {
-            "lag_1": lag_window[-1],
-            "lag_2": lag_window[-2],
-            "lag_3": lag_window[-3],
-            "lag_4": lag_window[-4],
-            "year": latest_date.year,
-            "quarter": latest_date.quarter,
-            "trend": len(sub) - 1
-        }
-        
-        X = pd.DataFrame([feature_dict])[self.features]
-
-        # Predict HPI values
-        pred_3m = float(self.model_3m.predict(X)[0])
-        pred_6m = float(self.model_6m.predict(X)[0])
-        pred_9m = float(self.model_9m.predict(X)[0])
-        pred_12m = float(self.model_12m.predict(X)[0])
-
-        # Compute appreciation percentages
-        app_1q = ((pred_3m - current_hpi) / current_hpi) * 100
-        app_2q = ((pred_6m - current_hpi) / current_hpi) * 100
-        app_3q = ((pred_9m - current_hpi) / current_hpi) * 100
-        app_4q = ((pred_12m - current_hpi) / current_hpi) * 100
-
-        # Confidence intervals
-        ci_low = pred_12m - 1.96 * self.residual_std_12m
-        ci_high = pred_12m + 1.96 * self.residual_std_12m
-        
-        band_pct = ((ci_high - ci_low) / (pred_12m + 1e-9)) * 100
-        confidence_band = "narrow" if band_pct < 8 else ("moderate" if band_pct < 20 else "wide")
-
-        return AppreciationForecast(
-            zip_code=zip_code,
-            current_hpi=round(float(current_hpi), 2),
-            hpi_1q=round(pred_3m, 2),
-            hpi_2q=round(pred_6m, 2),
-            hpi_3q=round(pred_9m, 2),
-            hpi_4q=round(pred_12m, 2),
-            appreciation_pct_1q=round(app_1q, 2),
-            appreciation_pct_2q=round(app_2q, 2),
-            appreciation_pct_3q=round(app_3q, 2),
-            appreciation_pct_4q=round(app_4q, 2),
-            ci_low_4q=round(ci_low, 2),
-            ci_high_4q=round(ci_high, 2),
-            confidence_band=confidence_band,
-        )
+        """Deprecated alias for predict_locality()."""
+        return self.predict_locality(zip_code, zhvi_long, as_of_date)
 
     def save(self, path: Path = MODEL_DIR) -> None:
         """Saves the entire model instance as a single pickle file."""

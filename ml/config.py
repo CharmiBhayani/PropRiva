@@ -48,7 +48,7 @@ M5_SCORE_WEIGHTS = {
 }
 
 M6_RISK_WEIGHTS = {
-    "zhvi_volatility":          0.2667,
+    "hpi_volatility":           0.2667,   # NHB Residex HPI variability
     "inventory_spike":          0.2000,
     "price_cut_trend":          0.2000,
     "rent_price_compression":   0.1333,
