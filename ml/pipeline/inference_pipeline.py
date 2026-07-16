@@ -91,9 +91,10 @@ class RealEstateAdvisor:
         enc_path = models_dir / "zip_encoder.pkl"
         if enc_path.exists():
             self.zip_encoder: ZipEncoder = joblib.load(enc_path)
-            log.info(" ZIP encoder loaded")
+            log.info(" Locality encoder loaded (%d localities)",
+                     len(getattr(self.zip_encoder, 'mapping_', {})))
         else:
-            log.warning("  ZIP encoder not found — using fresh encoder (reduced accuracy)")
+            log.warning("  Locality encoder not found — using fresh encoder (reduced accuracy)")
             self.zip_encoder = ZipEncoder()
 
         log.info("Model loading complete.")
@@ -110,15 +111,11 @@ class RealEstateAdvisor:
         features = dict(prop)
         locality_str = str(features.get("zip_code",
                            features.get("locality", "Thane"))).strip()
-        features["zip_code"]    = locality_str   # keep key consistent for M1/M2
-        features["CITY"]        = locality_str
-        features["zip_code_enc"] = int(
-            self.zip_encoder.transform(pd.Series([locality_str]))[0]
-        )
+        # Keep both keys so M1's API_TO_MUMBAI_MAP ('zip_code' → 'CITY') resolves correctly
+        features["zip_code"] = locality_str
+        features["CITY"]     = locality_str
 
         defaults = {
-            "sqft_vs_zip_median":    1.0,
-            "price_per_sqft_vs_zip": 1.0,
             "bedroom_multiplier":    BEDROOM_MULTIPLIER.get(
                                          int(features.get("bedrooms", 3)), 1.0),
             "property_type_enc":     1,
