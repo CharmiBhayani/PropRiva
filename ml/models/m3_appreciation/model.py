@@ -19,18 +19,18 @@ MODEL_DIR.mkdir(parents=True, exist_ok=True)
 @dataclass
 class AppreciationForecast:
     zip_code:             str
-    current_zhvi:         float
-    zhvi_3m:              float
-    zhvi_6m:              float
-    zhvi_9m:              float
-    zhvi_12m:             float
-    appreciation_pct_3m:  float
-    appreciation_pct_6m:  float
-    appreciation_pct_9m:  float
-    appreciation_pct_12m: float
-    ci_low_12m:           float
-    ci_high_12m:          float
-    confidence_band:      str        
+    current_hpi:          float
+    hpi_1q:               float     # 1 quarter ahead
+    hpi_2q:               float     # 2 quarters ahead
+    hpi_3q:               float     # 3 quarters ahead
+    hpi_4q:               float     # 4 quarters ahead
+    appreciation_pct_1q:  float
+    appreciation_pct_2q:  float
+    appreciation_pct_3q:  float
+    appreciation_pct_4q:  float
+    ci_low_4q:            float
+    ci_high_4q:           float
+    confidence_band:      str
 
 
 class M3AppreciationModel:
@@ -180,10 +180,10 @@ class M3AppreciationModel:
         pred_12m = float(self.model_12m.predict(X)[0])
 
         # Compute appreciation percentages
-        app_3m = ((pred_3m - current_hpi) / current_hpi) * 100
-        app_6m = ((pred_6m - current_hpi) / current_hpi) * 100
-        app_9m = ((pred_9m - current_hpi) / current_hpi) * 100
-        app_12m = ((pred_12m - current_hpi) / current_hpi) * 100
+        app_1q = ((pred_3m - current_hpi) / current_hpi) * 100
+        app_2q = ((pred_6m - current_hpi) / current_hpi) * 100
+        app_3q = ((pred_9m - current_hpi) / current_hpi) * 100
+        app_4q = ((pred_12m - current_hpi) / current_hpi) * 100
 
         # Confidence intervals
         ci_low = pred_12m - 1.96 * self.residual_std_12m
@@ -194,17 +194,17 @@ class M3AppreciationModel:
 
         return AppreciationForecast(
             zip_code=zip_code,
-            current_zhvi=round(float(current_hpi), 2),
-            zhvi_3m=round(pred_3m, 2),
-            zhvi_6m=round(pred_6m, 2),
-            zhvi_9m=round(pred_9m, 2),
-            zhvi_12m=round(pred_12m, 2),
-            appreciation_pct_3m=round(app_3m, 2),
-            appreciation_pct_6m=round(app_6m, 2),
-            appreciation_pct_9m=round(app_9m, 2),
-            appreciation_pct_12m=round(app_12m, 2),
-            ci_low_12m=round(ci_low, 2),
-            ci_high_12m=round(ci_high, 2),
+            current_hpi=round(float(current_hpi), 2),
+            hpi_1q=round(pred_3m, 2),
+            hpi_2q=round(pred_6m, 2),
+            hpi_3q=round(pred_9m, 2),
+            hpi_4q=round(pred_12m, 2),
+            appreciation_pct_1q=round(app_1q, 2),
+            appreciation_pct_2q=round(app_2q, 2),
+            appreciation_pct_3q=round(app_3q, 2),
+            appreciation_pct_4q=round(app_4q, 2),
+            ci_low_4q=round(ci_low, 2),
+            ci_high_4q=round(ci_high, 2),
             confidence_band=confidence_band,
         )
 

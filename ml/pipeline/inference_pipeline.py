@@ -156,7 +156,7 @@ class RealEstateAdvisor:
             gap_pct    = 0.0
             result["m1"] = {"estimated_value": prop_value, "note": "M1 not loaded"}
 
-        age = 2026 - int(features.get("year_built", 2020))
+        age = int(features.get("age", 5))
         annual_maint = (
             prop_value * 0.01
             + (min(age, 20) / 20) * (200_000 / 20)
@@ -202,35 +202,35 @@ class RealEstateAdvisor:
                 "net_yield":    net_yield,
             }
 
-        appr_12m = 5.0
+        appr_quarterly = 5.0
         if self.m3 and self.zhvi_long is not None:
             try:
                 fc = self.m3.predict_zip(zip_str, self.zhvi_long)
                 result["m3"] = {
-                    "current_zhvi":         fc.current_zhvi,
-                    "zhvi_3m":              fc.zhvi_3m,
-                    "zhvi_6m":              fc.zhvi_6m,
-                    "zhvi_9m":              fc.zhvi_9m,
-                    "zhvi_12m":             fc.zhvi_12m,
-                    "appreciation_3m_pct":  fc.appreciation_pct_3m,
-                    "appreciation_6m_pct":  fc.appreciation_pct_6m,
-                    "appreciation_9m_pct":  fc.appreciation_pct_9m,
-                    "appreciation_12m_pct": fc.appreciation_pct_12m,
-                    "ci_low_12m":           fc.ci_low_12m,
-                    "ci_high_12m":          fc.ci_high_12m,
-                    "confidence_band":      fc.confidence_band,
+                    "current_hpi":              fc.current_hpi,
+                    "hpi_1q":                   fc.hpi_1q,
+                    "hpi_2q":                   fc.hpi_2q,
+                    "hpi_3q":                   fc.hpi_3q,
+                    "hpi_4q":                   fc.hpi_4q,
+                    "appreciation_pct_1q":       fc.appreciation_pct_1q,
+                    "appreciation_pct_2q":       fc.appreciation_pct_2q,
+                    "appreciation_pct_3q":       fc.appreciation_pct_3q,
+                    "appreciation_pct_4q":       fc.appreciation_pct_4q,
+                    "ci_low_4q":                fc.ci_low_4q,
+                    "ci_high_4q":               fc.ci_high_4q,
+                    "confidence_band":           fc.confidence_band,
                 }
-                appr_12m = fc.appreciation_pct_12m
+                appr_quarterly = fc.appreciation_pct_1q
             except Exception as exc:
                 log.warning("M3 predict_zip failed: %s", exc)
                 result["m3"] = {
                     "note": f"M3 forecast unavailable: {exc}",
-                    "appreciation_12m_pct": appr_12m,
+                    "appreciation_pct_1q": appr_quarterly,
                 }
         else:
             result["m3"] = {
-                "note": "M3 not available (no ZHVI data or model not trained)",
-                "appreciation_12m_pct": appr_12m,
+                "note": "M3 not available (no NHB Residex data or model not trained)",
+                "appreciation_pct_1q": appr_quarterly,
             }
 
         # Dynamically compute rent to price ratio using listed price if available, otherwise prop_value
@@ -253,7 +253,7 @@ class RealEstateAdvisor:
 
         sc = self.m5.score(
             gross_yield_pct      = gross_yield,
-            appreciation_pct_12m = appr_12m,
+            appreciation_pct_12m = appr_quarterly,
             value_gap_pct        = gap_pct,
             vacancy_prob         = float(features.get("vacancy_prob", 0.30)),
             annual_maintenance   = annual_maint,
@@ -306,7 +306,7 @@ class RealEstateAdvisor:
         zip_code: str,
     ) -> dict:
         if self.m3 is None:
-            return {"error": "M3 not trained — provide Zillow ZHVI CSV and re-run training."}
+            return {"error": "M3 not trained — provide NHB Residex CSV and re-run training."}
         try:
             fc = self.m3.predict_zip(zip_code, self.zhvi_long)
             return vars(fc)

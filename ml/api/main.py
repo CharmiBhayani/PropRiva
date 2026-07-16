@@ -35,43 +35,24 @@ class PropertyInput(BaseModel):
 
     bedrooms:   int   = Field(3,      ge=0,   le=15)
     bathrooms:  float = Field(2.0,    ge=0,   le=12)
-    sqft:       int   = Field(1_000,  ge=200, le=15_000)
-    lot_size:   int   = Field(1_000,  ge=0)
-    year_built: int   = Field(2020,   ge=1800, le=2026)
-    condition:  int   = Field(3,      ge=1,   le=5)
-    grade:      int   = Field(7,      ge=1,   le=13)
-    zip_code:   str   = Field("Thane")
+    sqft:       int   = Field(1_000,  ge=100, le=50_000)
+    zip_code:   str   = Field("Thane", description="City / Locality name")
     listed_price: Optional[float] = Field(None, description="Listed / asking price ₹")
     property_type: Optional[str] = Field("Residential Apartment")
-    furnishing:    Optional[float] = Field(1.0)
-    age:           Optional[int] = Field(5)
+    furnishing:    Optional[float] = Field(1.0, description="0=Unfurnished, 1=Semi, 2=Furnished")
+    age:           Optional[int] = Field(5, description="Property age in years")
     total_floors:  Optional[int] = Field(7)
-    floors:        Optional[int] = Field(3)
+    floors:        Optional[int] = Field(3, description="Floor number of the unit")
     balconies:     Optional[int] = Field(1)
-    locality:      Optional[str] = Field(None)
+    locality:      Optional[str] = Field(None, description="Specific locality (overrides zip_code)")
 
-    zhvi_at_sale:    Optional[float] = Field(None)
-    zhvi_12m_growth: Optional[float] = Field(None)
-    zhvi_3yr_cagr:   Optional[float] = Field(None)
-    zori_at_month:   Optional[float] = Field(None)
-    zori_12m_growth: Optional[float] = Field(None)
-    inventory:       Optional[float] = Field(None)
-    market_heat:     Optional[float] = Field(None)
-    price_cut_pct:   Optional[float] = Field(None)
-
-   
-    sqft_vs_zip_median:    Optional[float] = Field(None)
-    price_per_sqft_vs_zip: Optional[float] = Field(None)
-    rent_to_price_ratio:   Optional[float] = Field(None)
-
-    
+    # Risk model inputs (optional overrides)
     inventory_trend_pct: Optional[float] = Field(
         None, description="YoY % change in active inventory (e.g. 0.15 = +15%)"
     )
     employment_hhi: Optional[float] = Field(
         None, description="Employment sector HHI 0–1 (1 = most concentrated)"
     )
-
     vacancy_prob: Optional[float] = Field(
         None, description="Estimated vacancy probability 0–1"
     )
@@ -84,7 +65,7 @@ class PortfolioPropertyInput(BaseModel):
 
     m1_estimated_value:      Optional[float] = Field(None, description="M1 estimated value ₹")
     m2_monthly_rent:         Optional[float] = Field(None, description="M2 estimated monthly rent ₹")
-    m3_appreciation_pct_12m: Optional[float] = Field(None, description="M3 12m appreciation %")
+    m3_appreciation_pct_quarterly: Optional[float] = Field(None, description="M3 quarterly appreciation %")
 
     
     m6_risk_score:           Optional[float] = Field(None, description="M6 risk score 0–100")
@@ -108,7 +89,7 @@ class PortfolioInput(BaseModel):
 
 
 class ZipForecastInput(BaseModel):
-    zip_code:     str = Field(..., description="5-digit ZIP code")
+    zip_code:     str = Field(..., description="City / Locality name")
 
 @app.get("/health", summary="Liveness check")
 def health():
@@ -158,7 +139,7 @@ def analyse_portfolio(body: PortfolioInput):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-@app.post("/zip/appreciation", summary="M3 appreciation forecast for a ZIP")
+@app.post("/zip/appreciation", summary="M3 quarterly appreciation forecast for a locality")
 def zip_appreciation(body: ZipForecastInput):
     try:
         advisor = get_advisor()

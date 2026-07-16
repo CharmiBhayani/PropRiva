@@ -8,10 +8,9 @@ load_dotenv(ROOT.parent / ".env")
 # Paths
 DATA_RAW        = ROOT / "data" / "raw"
 DATA_PROCESSED  = ROOT / "data" / "processed"
-DATA_ZILLOW     = ROOT / "data" / "zillow"
 MODELS_DIR      = ROOT / "models"
 OUTPUTS_DIR     = ROOT / "outputs"
-for d in [DATA_RAW, DATA_PROCESSED, DATA_ZILLOW, OUTPUTS_DIR]:
+for d in [DATA_RAW, DATA_PROCESSED, OUTPUTS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter")
@@ -24,24 +23,21 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "google/gemini-2.0-flash-001")
 GROQ_MODEL   = os.getenv("GROQ_MODEL",   "meta-llama/llama-3.3-70b-instruct")
 
 
-# Features sets for each model
+# Features sets for each model (Indian / Mumbai dataset)
 M1_FEATURES = [
-    "bedrooms", "bathrooms", "sqft", "lot_size", "year_built",
-    "condition", "grade", "zip_code_enc",
-    "zhvi_at_sale", "zhvi_12m_growth", "zhvi_3yr_cagr",
-    "inventory", "market_heat", "price_cut_pct",
-    "price_per_sqft_vs_zip", "sqft_vs_zip_median",
+    "BEDROOM_NUM", "AREA", "AGE", "TOTAL_FLOOR",
+    "FLOOR_NUM", "BALCONY_NUM", "FURNISH",
+    "PROPERTY_TYPE_enc", "CITY_enc",
 ]
 
 M2_FEATURES = [
-    "bedrooms", "bathrooms", "sqft", "property_type_enc",
-    "year_built", "condition", "zip_code_enc",
-    "zori_at_month", "rent_to_price_ratio",
-    "zori_12m_growth", "sqft_vs_zip_median", "bedroom_multiplier",
+    "BEDROOM_NUM", "AREA", "AGE", "TOTAL_FLOOR",
+    "FLOOR_NUM", "BALCONY_NUM", "FURNISH",
+    "PROPERTY_TYPE_enc", "CITY_enc",
 ]
 
-M3_LAG_MONTHS  = 36   # trailing months of ZHVI used as input
-M3_HORIZONS    = [6, 12]
+M3_LAG_QUARTERS = 4    # trailing quarters of NHB Residex used as input
+M3_HORIZONS     = [1, 2, 3, 4]   # forecast horizons in quarters
 
 M5_SCORE_WEIGHTS = {
     "yield_score":        0.30,
@@ -63,7 +59,7 @@ BEDROOM_MULTIPLIER = {0: 0.75, 1: 0.85, 2: 1.00, 3: 1.15, 4: 1.25, 5: 1.35}
 MAINTENANCE_RATE       = 0.01   
 ROOF_USEFUL_LIFE       = 20
 HVAC_USEFUL_LIFE       = 15
-ROOF_REPLACEMENT_COST  = 12_000
-HVAC_REPLACEMENT_COST  = 8_000
+ROOF_REPLACEMENT_COST  = 200_000   # INR
+HVAC_REPLACEMENT_COST  = 100_000   # INR
 GRADE_THRESHOLDS = {"A": 80, "B": 60, "C": 40, "D": 0}
 RISK_THRESHOLDS  = {"Low": 30, "Med": 55, "High": 75, "Spec": 101}

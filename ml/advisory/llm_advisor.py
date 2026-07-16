@@ -104,16 +104,16 @@ Rules:
 - No filler phrases. No bullet points. Prose only."""
 
 _SYSTEM_PORTFOLIO = """\
-You are a portfolio strategist specialising in residential real estate.
+You are a portfolio strategist specialising in Indian residential real estate.
 Given a full portfolio summary, write a 5–7 sentence executive narrative that:
   1. States portfolio health — total value, gross yield, net yield, appreciation outlook.
   2. Identifies the single biggest risk or concentration concern with specific numbers.
   3. Contrasts the best and worst performing assets briefly.
   4. Gives one specific, actionable rebalancing or acquisition recommendation.
 Rules:
-- Reference actual dollar amounts and percentages from the data.
+- Reference actual amounts in ₹ (INR) and percentages from the data.
 - No bullet points. Continuous professional prose.
-- Assume the reader is a sophisticated investor."""
+- Assume the reader is a sophisticated Indian real estate investor."""
 
 _SYSTEM_RISK = """\
 You are a real estate market risk analyst.
@@ -144,11 +144,17 @@ def generate_investment_narrative(ctx: dict) -> str:
         lines += [
             "",
             f"Property context: "
-            f"{ctx.get('bedrooms', '?')}bd / {ctx.get('sqft', '?')} sqft"
-            f" | Value ${ctx.get('estimated_value'):,.0f}"
-            f" | Rent ${ctx.get('monthly_rent', '?')}/mo"
-            f" | ZIP {ctx.get('zip_code', '?')}",
+            f"{ctx.get('bedrooms', '?')} BHK / {ctx.get('sqft', '?')} sqft"
+            f" | Value ₹{ctx.get('estimated_value'):,.0f}"
+            f" | Rent ₹{ctx.get('monthly_rent', '?')}/mo"
+            f" | Locality {ctx.get('zip_code', '?')}",
         ]
+    if ctx.get("age"):
+        lines.append(
+            f"  Age: {ctx.get('age')} yrs | Floors: {ctx.get('floors')}/{ctx.get('total_floors')}"
+            f" | Furnishing: {ctx.get('furnishing')} | Balconies: {ctx.get('balconies')}"
+            f" | Type: {ctx.get('property_type')}"
+        )
     return _call_llm(_SYSTEM_INVESTMENT, "\n".join(lines), max_tokens=320)
 
 
@@ -162,12 +168,12 @@ def generate_portfolio_narrative(ctx: dict) -> str:
             pid  = p.get("property_id", "—")
             val  = p.get("m1_estimated_value", p.get("sale_price", "?"))
             rent = p.get("m2_monthly_rent", "?")
-            appr = p.get("m3_appreciation_pct_12m", "?")
+            appr = p.get("m3_appreciation_pct_quarterly", p.get("m3_appreciation_pct_12m", "?"))
             risk = p.get("m6_risk_score", "?")
             ny   = p.get("_net_yield_prop", "?")
             try:
                 row = (
-                    f"    {pid}: ${float(val):,.0f}, ${float(rent):,.0f}/mo, "
+                    f"    {pid}: ₹{float(val):,.0f}, ₹{float(rent):,.0f}/mo, "
                     f"{float(appr):.1f}% appr, risk {float(risk):.0f}, "
                     f"net yield {float(ny):.1f}%"
                 )
@@ -188,12 +194,12 @@ def generate_portfolio_narrative(ctx: dict) -> str:
         f"  Annual rent income:                  {ctx.get('total_annual_rent')}\n"
         f"  Annual maintenance (user-supplied):  {ctx.get('total_annual_maintenance')}\n"
         f"  Net annual income:                   {ctx.get('net_annual_income')}\n"
-        f"  12m appreciation forecast (wtd avg): {ctx.get('appreciation_forecast_12m')}\n"
+        f"  Quarterly appreciation forecast (wtd avg): {ctx.get('appreciation_forecast_quarterly', ctx.get('appreciation_forecast_12m'))}\n"
         f"\n"
         f"Risk & Diversification\n"
         f"  Average risk score:    {ctx.get('avg_risk_score')}/100\n"
         f"  Diversification score: {ctx.get('diversification_score')}/100\n"
-        f"  ZIP concentration (%): {zip_str}\n"
+        f"  Locality concentration (%): {zip_str}\n"
         f"\n"
         f"Rebalancing Flags\n"
         f"{flags_str}\n"
@@ -216,8 +222,6 @@ def generate_risk_narrative(ctx: dict) -> str:
         f"Tier: {ctx.get('risk_tier')}\n"
         f"Top risk factors: {', '.join(ctx.get('top_factors', []))}\n\n"
         f"Factor scores (0–100, higher = more risky):\n"
-        f"  ZHVI Volatility:          {ctx.get('zhvi_volatility_score')}\n"
-        f"  Inventory Spike:          {ctx.get('inventory_spike_score')}\n"
         f"  Price Cut Trend:          {ctx.get('price_cut_score')}\n"
         f"  Rent/Price Compression:   {ctx.get('rent_compression_score')}\n"
         f"  Employment Concentration: {ctx.get('employment_score')}\n"
@@ -228,7 +232,7 @@ def generate_risk_narrative(ctx: dict) -> str:
 def generate_buy_hold_sell_reasoning(
     m1_value:            float,
     listed_price:        float,
-    m3_appreciation_12m: float,
+    m3_appreciation_quarterly: float,
     m2_gross_yield:      float,
     vacancy_tier:        str,
     annual_maintenance:  float,
@@ -244,12 +248,12 @@ def generate_buy_hold_sell_reasoning(
     )
     user_msg = (
         f"Signal: {m5_signal}  (Investment Score {m5_score:.0f}/100)\n\n"
-        f"Market 12m Appreciation Forecast: {m3_appreciation_12m:.1f}%\n"
+        f"Quarterly Appreciation Forecast (NHB Residex): {m3_appreciation_quarterly:.1f}%\n"
         f"Property is {flag} by {abs(gap_pct):.1f}% "
-        f"(Listed ${listed_price:,.0f} vs Predicted ${m1_value:,.0f})\n"
+        f"(Listed ₹{listed_price:,.0f} vs Predicted ₹{m1_value:,.0f})\n"
         f"Gross Yield: {m2_gross_yield:.1f}%\n"
         f"Vacancy Risk Tier: {vacancy_tier}\n"
-        f"Annual Maintenance: ${annual_maintenance:,.0f}\n"
+        f"Annual Maintenance: ₹{annual_maintenance:,.0f}\n"
     )
     if market_timing:
         user_msg += f"Market Timing Signal: {market_timing}\n"
