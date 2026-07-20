@@ -16,9 +16,9 @@ app = FastAPI(
         "ML-powered property valuation, rental estimation, "
         "appreciation forecasting, portfolio analysis, and investment advisory.\n\n"
         "Models: M1 (value) · M2 (rent) · M3 (appreciation) · "
-        "M4 (portfolio) · M5 (investment score) · M6 (risk)"
+        "M4 (portfolio) · M5 (investment score) · M6 (risk) · M7 (amenity)"
     ),
-    version="2.0.0",
+    version="2.1.0",
 )
 
 _advisor = None
@@ -91,6 +91,23 @@ class PortfolioInput(BaseModel):
 class ZipForecastInput(BaseModel):
     zip_code:     str = Field(..., description="City / Locality name")
 
+
+class AmenityPlaceInput(BaseModel):
+    name:       str
+    type:       str   = Field(..., description="hospital | supermarket | metro_station | school | mall")
+    distance_m: float = Field(..., ge=0, description="Distance from property in metres")
+    rating:     Optional[float] = Field(None, ge=1.0, le=5.0, description="1–5 rating (optional)")
+
+
+class AmenityInput(BaseModel):
+    lat:           Optional[float] = Field(None, description="Property latitude")
+    lng:           Optional[float] = Field(None, description="Property longitude")
+    nearby_places: list[AmenityPlaceInput] = Field(
+        ...,
+        min_length=1,
+        description="Nearby places with type, distance and optional rating",
+    )
+
 @app.get("/health", summary="Liveness check")
 def health():
     from advisory.llm_advisor import active_provider_info
@@ -149,4 +166,23 @@ def zip_appreciation(body: ZipForecastInput):
         log.exception("zip_appreciation error")
         raise HTTPException(status_code=500, detail=str(exc))
 
+@app.post("/property/amenity", summary="M7 amenity & connectivity score for a property")
+def amenity_score(body: AmenityInput):
+    """Score a property based on its surrounding amenities.
 
+    Returns amenity_score (0–100), connectivity_score (0–100),
+    per-category breakdown, and estimated price_impact_pct.
+    """
+    try:
+        from models.m7_amenity.model import M7AmenityScorer
+        scorer = M7AmenityScorer()
+        places = [p.model_dump() for p in body.nearby_places]
+        result = scorer.score(
+            lat=body.lat,
+            lng=body.lng,
+            nearby_places=places,
+        )
+        return result.to_dict()
+    except Exception as exc:
+        log.exception("amenity_score error")
+        raise HTTPException(status_code=500, detail=str(exc))

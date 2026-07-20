@@ -63,3 +63,14 @@ ROOF_REPLACEMENT_COST  = 200_000   # INR
 HVAC_REPLACEMENT_COST  = 100_000   # INR
 GRADE_THRESHOLDS = {"A": 80, "B": 60, "C": 40, "D": 0}
 RISK_THRESHOLDS  = {"Low": 30, "Med": 55, "High": 75, "Spec": 101}
+
+# M7 — Amenity & Connectivity Scorer (Mumbai-specific)
+M7_AMENITY_WEIGHTS = {
+    "metro":      0.40,   # Metro proximity dominates Mumbai property pricing
+    "healthcare": 0.20,
+    "retail":     0.20,
+    "schools":    0.20,
+}
+M7_CONNECTIVITY_METRO_W   = 0.70
+M7_CONNECTIVITY_SUPPORT_W = 0.30
+M7_PRICE_IMPACT_CLIP      = (-8.0, 15.0)   # min/max % price impact from amenities
