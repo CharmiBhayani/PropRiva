@@ -43,9 +43,9 @@ class M2RentalValueModel:
     """Random Forest and XGBoost ensemble for Mumbai rental value estimation (Model M2)."""
 
     def __init__(self):
-        self.xgb_model = None
-        self.rf_model = None
-        self.preprocessor = None
+        self.xgb_model: Optional[xgb.XGBRegressor] = None
+        self.rf_model:  Optional[RandomForestRegressor] = None
+        self.preprocessor: Optional[MumbaiFeaturePreprocessor] = None
         self.feature_cols: list[str] = [
             "PROPERTY_TYPE_enc", "CITY_enc", "BEDROOM_NUM", "FURNISH", 
             "AGE", "TOTAL_FLOOR", "AREA", "BALCONY_NUM", "FLOOR_NUM"
@@ -138,6 +138,9 @@ class M2RentalValueModel:
             RentalPrediction object.
         """
         assert self.is_fitted
+        assert self.preprocessor is not None
+        assert self.xgb_model is not None
+        assert self.rf_model is not None
         
         # Map input keys to Mumbai uppercase names
         mapped = {}
@@ -174,6 +177,9 @@ class M2RentalValueModel:
     def predict_batch(self, df: pd.DataFrame) -> pd.DataFrame:
         """Batch predicts rents; returns df with prediction columns."""
         assert self.is_fitted
+        assert self.preprocessor is not None
+        assert self.xgb_model is not None
+        assert self.rf_model is not None
         
         # Rename columns if needed
         df_mapped = df.rename(columns=API_TO_MUMBAI_MAP)

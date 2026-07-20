@@ -45,9 +45,9 @@ class M1MarketValueModel:
     """Random Forest and XGBoost ensemble for Mumbai market value estimation (Model M1)."""
     
     def __init__(self):
-        self.xgb_model = None
-        self.rf_model = None
-        self.preprocessor = None
+        self.xgb_model: Optional[xgb.XGBRegressor] = None
+        self.rf_model:  Optional[RandomForestRegressor] = None
+        self.preprocessor: Optional[MumbaiFeaturePreprocessor] = None
         self.feature_cols: list[str] = [
             "PROPERTY_TYPE_enc", "CITY_enc", "BEDROOM_NUM", "FURNISH", 
             "AGE", "TOTAL_FLOOR", "AREA", "BALCONY_NUM", "FLOOR_NUM"
@@ -145,6 +145,9 @@ class M1MarketValueModel:
             ValuePrediction object.
         """
         assert self.is_fitted, "Model not fitted — call fit() or load() first."
+        assert self.preprocessor is not None
+        assert self.xgb_model is not None
+        assert self.rf_model is not None
         
         # Map input keys (lowercase / API names) to Mumbai uppercase names
         mapped = {}
@@ -191,6 +194,9 @@ class M1MarketValueModel:
     def predict_batch(self, df: pd.DataFrame) -> pd.DataFrame:
         """Batch predicts; returns df with added prediction columns."""
         assert self.is_fitted
+        assert self.preprocessor is not None
+        assert self.xgb_model is not None
+        assert self.rf_model is not None
         
         # If input has API names, rename them
         df_mapped = df.rename(columns=API_TO_MUMBAI_MAP)

@@ -37,9 +37,12 @@ def load_mumbai_raw(filepath: Path = DATA_RAW / "mumbai.csv") -> pd.DataFrame:
             rows = list(table.rows())
             if not rows:
                 continue
-            headers = [cell.value if cell.value is not None else f"col_{col_idx}" 
-                       for col_idx, cell in enumerate(rows[0])]
-            data = [[cell.value for cell in row] for row in rows[1:]]
+            headers = [
+                getattr(cell, 'value', None) if getattr(cell, 'value', None) is not None
+                else f"col_{col_idx}"
+                for col_idx, cell in enumerate(rows[0])
+            ]
+            data = [[getattr(cell, 'value', None) for cell in row] for row in rows[1:]]
             df = pd.DataFrame(data, columns=headers)
             dfs.append(df)
             
@@ -104,8 +107,8 @@ def load_nhb_residex_raw(filepath: Path = DATA_RAW / "NHB Residex 13-26.csv") ->
         if not rows:
             raise ValueError(f"No rows found in sheet 0 of NHB Residex: {filepath}")
             
-        headers = [cell.value for cell in rows[0]]
-        data = [[cell.value for cell in row] for row in rows[1:]]
+        headers = [getattr(cell, 'value', None) for cell in rows[0]]
+        data = [[getattr(cell, 'value', None) for cell in row] for row in rows[1:]]
         df = pd.DataFrame(data, columns=headers)
         
         # Drop columns that are entirely null and rows missing key values

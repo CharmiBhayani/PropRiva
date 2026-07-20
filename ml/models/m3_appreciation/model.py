@@ -37,10 +37,10 @@ class M3AppreciationModel:
     """XGBoost time-series model for forecasting property appreciation (Model M3) using NHB Residex."""
 
     def __init__(self):
-        self.model_3m = None
-        self.model_6m = None
-        self.model_9m = None
-        self.model_12m = None
+        self.model_3m:  Optional[xgb.XGBRegressor] = None
+        self.model_6m:  Optional[xgb.XGBRegressor] = None
+        self.model_9m:  Optional[xgb.XGBRegressor] = None
+        self.model_12m: Optional[xgb.XGBRegressor] = None
         self.residual_std_12m = 0.0
         self.features = ["lag_1", "lag_2", "lag_3", "lag_4", "year", "quarter", "trend"]
         self.is_fitted = False
@@ -63,10 +63,11 @@ class M3AppreciationModel:
         df["lag_3"] = df["hpi"].shift(3)
         df["lag_4"] = df["hpi"].shift(4)
         
-        # Create time features
-        df["year"] = df["date"].dt.year
-        df["quarter"] = df["date"].dt.quarter
-        df["trend"] = df.index
+        # Create time features — explicit datetime cast so type checker resolves .dt accessor
+        df["date"] = pd.to_datetime(df["date"])
+        df["year"]    = df["date"].dt.year.astype(int)
+        df["quarter"] = df["date"].dt.quarter.astype(int)
+        df["trend"]   = df.index.astype(int)
         
         # Targets: 3m (1 quarter ahead), 6m (2 quarters ahead), 9m (3 quarters ahead), 12m (4 quarters ahead)
         df["target_3m"] = df["hpi"].shift(-1)
@@ -91,23 +92,27 @@ class M3AppreciationModel:
             test_df["date"].max().strftime("%Y-%m")
         )
 
+        # Extract numpy arrays — XGBoost type stubs require ndarray, not DataFrame
+        X_train = train_df[self.features].to_numpy(dtype=float)
+        X_test  = test_df[self.features].to_numpy(dtype=float)
+
         # Train XGBoost Models for all horizons
         self.model_3m = xgb.XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.05, random_state=42, n_jobs=-1, verbosity=0)
-        self.model_3m.fit(train_df[self.features], train_df["target_3m"])
+        self.model_3m.fit(X_train, train_df["target_3m"].to_numpy(dtype=float))
 
         self.model_6m = xgb.XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.05, random_state=42, n_jobs=-1, verbosity=0)
-        self.model_6m.fit(train_df[self.features], train_df["target_6m"])
+        self.model_6m.fit(X_train, train_df["target_6m"].to_numpy(dtype=float))
 
         self.model_9m = xgb.XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.05, random_state=42, n_jobs=-1, verbosity=0)
-        self.model_9m.fit(train_df[self.features], train_df["target_9m"])
+        self.model_9m.fit(X_train, train_df["target_9m"].to_numpy(dtype=float))
 
         self.model_12m = xgb.XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.05, random_state=42, n_jobs=-1, verbosity=0)
-        self.model_12m.fit(train_df[self.features], train_df["target_12m"])
+        self.model_12m.fit(X_train, train_df["target_12m"].to_numpy(dtype=float))
 
         self.is_fitted = True
 
         # Evaluation
-        preds_12m = self.model_12m.predict(test_df[self.features])
+        preds_12m = self.model_12m.predict(X_test)
         y_test_12m = test_df["target_12m"].values
         residuals_12m = y_test_12m - preds_12m
         self.residual_std_12m = float(np.std(residuals_12m))
@@ -143,6 +148,10 @@ class M3AppreciationModel:
             AppreciationForecast dataclass.
         """
         assert self.is_fitted
+        assert self.model_3m  is not None
+        assert self.model_6m  is not None
+        assert self.model_9m  is not None
+        assert self.model_12m is not None
 
         df_loc = hpi_df.copy()
 

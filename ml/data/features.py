@@ -111,8 +111,8 @@ class MumbaiFeaturePreprocessor:
                         "AREA", "BALCONY_NUM", "FLOOR_NUM"]
         for col in numeric_cols:
             if col in df.columns:
-                med = float(pd.to_numeric(df[col], errors="coerce").median())
-                self.medians[col] = 0.0 if pd.isna(med) else med
+                med_val = pd.to_numeric(df[col], errors="coerce").median()
+                self.medians[col] = 0.0 if pd.isna(med_val) else float(med_val)
             else:
                 self.medians[col] = 0.0
 
@@ -134,14 +134,18 @@ class MumbaiFeaturePreprocessor:
             df["PROPERTY_TYPE"].fillna("Unknown").astype(str).str.strip()
             .apply(lambda x: x if x in self.property_types_ else self.property_types_[0])
         )
-        df["PROPERTY_TYPE_enc"] = self.property_type_encoder.transform(pt_series)
+        df["PROPERTY_TYPE_enc"] = pd.Series(
+            self.property_type_encoder.transform(pt_series), index=df.index, dtype="int64"
+        )
 
         # CITY / locality
         city_series = (
             df["CITY"].fillna("Unknown").astype(str).str.strip()
             .apply(lambda x: x if x in self.cities_ else self.cities_[0])
         )
-        df["CITY_enc"] = self.city_encoder.transform(city_series)
+        df["CITY_enc"] = pd.Series(
+            self.city_encoder.transform(city_series), index=df.index, dtype="int64"
+        )
 
         # Numeric imputation
         numeric_cols = ["BEDROOM_NUM", "FURNISH", "AGE", "TOTAL_FLOOR",
