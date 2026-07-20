@@ -37,10 +37,10 @@ class M3AppreciationModel:
     """XGBoost time-series model for forecasting property appreciation (Model M3) using NHB Residex."""
 
     def __init__(self):
-        self.model_3m:  Optional[xgb.XGBRegressor] = None
-        self.model_6m:  Optional[xgb.XGBRegressor] = None
-        self.model_9m:  Optional[xgb.XGBRegressor] = None
-        self.model_12m: Optional[xgb.XGBRegressor] = None
+        self.model_3m  = None
+        self.model_6m  = None
+        self.model_9m  = None
+        self.model_12m = None
         self.residual_std_12m = 0.0
         self.features = ["lag_1", "lag_2", "lag_3", "lag_4", "year", "quarter", "trend"]
         self.is_fitted = False
@@ -148,10 +148,6 @@ class M3AppreciationModel:
             AppreciationForecast dataclass.
         """
         assert self.is_fitted
-        assert self.model_3m  is not None
-        assert self.model_6m  is not None
-        assert self.model_9m  is not None
-        assert self.model_12m is not None
 
         df_loc = hpi_df.copy()
 
@@ -209,10 +205,10 @@ class M3AppreciationModel:
 
         X = pd.DataFrame([feature_dict])[self.features]
 
-        pred_3m  = float(self.model_3m.predict(X)[0])
-        pred_6m  = float(self.model_6m.predict(X)[0])
-        pred_9m  = float(self.model_9m.predict(X)[0])
-        pred_12m = float(self.model_12m.predict(X)[0])
+        pred_3m  = float(self.model_3m.predict(X)[0])   # type: ignore[union-attr]
+        pred_6m  = float(self.model_6m.predict(X)[0])   # type: ignore[union-attr]
+        pred_9m  = float(self.model_9m.predict(X)[0])   # type: ignore[union-attr]
+        pred_12m = float(self.model_12m.predict(X)[0])  # type: ignore[union-attr]
 
         app_1q = (pred_3m  - current_hpi) / current_hpi * 100
         app_2q = (pred_6m  - current_hpi) / current_hpi * 100

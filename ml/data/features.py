@@ -134,18 +134,14 @@ class MumbaiFeaturePreprocessor:
             df["PROPERTY_TYPE"].fillna("Unknown").astype(str).str.strip()
             .apply(lambda x: x if x in self.property_types_ else self.property_types_[0])
         )
-        df["PROPERTY_TYPE_enc"] = pd.Series(
-            self.property_type_encoder.transform(pt_series), index=df.index, dtype="int64"
-        )
+        df["PROPERTY_TYPE_enc"] = self.property_type_encoder.transform(pt_series)  # type: ignore[assignment]
 
         # CITY / locality
         city_series = (
             df["CITY"].fillna("Unknown").astype(str).str.strip()
             .apply(lambda x: x if x in self.cities_ else self.cities_[0])
         )
-        df["CITY_enc"] = pd.Series(
-            self.city_encoder.transform(city_series), index=df.index, dtype="int64"
-        )
+        df["CITY_enc"] = self.city_encoder.transform(city_series)  # type: ignore[assignment]
 
         # Numeric imputation
         numeric_cols = ["BEDROOM_NUM", "FURNISH", "AGE", "TOTAL_FLOOR",

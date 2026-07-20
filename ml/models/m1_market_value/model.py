@@ -45,9 +45,9 @@ class M1MarketValueModel:
     """Random Forest and XGBoost ensemble for Mumbai market value estimation (Model M1)."""
     
     def __init__(self):
-        self.xgb_model: Optional[xgb.XGBRegressor] = None
-        self.rf_model:  Optional[RandomForestRegressor] = None
-        self.preprocessor: Optional[MumbaiFeaturePreprocessor] = None
+        self.xgb_model = None
+        self.rf_model = None
+        self.preprocessor = None
         self.feature_cols: list[str] = [
             "PROPERTY_TYPE_enc", "CITY_enc", "BEDROOM_NUM", "FURNISH", 
             "AGE", "TOTAL_FLOOR", "AREA", "BALCONY_NUM", "FLOOR_NUM"
@@ -145,10 +145,7 @@ class M1MarketValueModel:
             ValuePrediction object.
         """
         assert self.is_fitted, "Model not fitted — call fit() or load() first."
-        assert self.preprocessor is not None
-        assert self.xgb_model is not None
-        assert self.rf_model is not None
-        
+
         # Map input keys (lowercase / API names) to Mumbai uppercase names
         mapped = {}
         for k, v in property_features.items():
@@ -161,11 +158,11 @@ class M1MarketValueModel:
             
         # Transform using preprocessor
         df_input = pd.DataFrame([mapped])
-        df_proc = self.preprocessor.transform(df_input)
+        df_proc = self.preprocessor.transform(df_input)  # type: ignore[union-attr]
         X = df_proc[self.feature_cols].values.astype(np.float32)
 
-        pred_xgb = float(np.expm1(self.xgb_model.predict(X)[0]))
-        pred_rf = float(np.expm1(self.rf_model.predict(X)[0]))
+        pred_xgb = float(np.expm1(self.xgb_model.predict(X)[0]))  # type: ignore[union-attr]
+        pred_rf  = float(np.expm1(self.rf_model.predict(X)[0]))   # type: ignore[union-attr]
         est = (pred_xgb + pred_rf) / 2
 
         # Heuristic 10% confidence interval
@@ -194,20 +191,17 @@ class M1MarketValueModel:
     def predict_batch(self, df: pd.DataFrame) -> pd.DataFrame:
         """Batch predicts; returns df with added prediction columns."""
         assert self.is_fitted
-        assert self.preprocessor is not None
-        assert self.xgb_model is not None
-        assert self.rf_model is not None
-        
+
         # If input has API names, rename them
         df_mapped = df.rename(columns=API_TO_MUMBAI_MAP)
         if "AGE" not in df_mapped.columns and "year_built" in df.columns:
             df_mapped["AGE"] = 2026 - df["year_built"]
             
-        df_proc = self.preprocessor.transform(df_mapped)
+        df_proc = self.preprocessor.transform(df_mapped)  # type: ignore[union-attr]
         X = df_proc[self.feature_cols].values.astype(np.float32)
         
-        p_xgb = np.expm1(self.xgb_model.predict(X))
-        p_rf = np.expm1(self.rf_model.predict(X))
+        p_xgb = np.expm1(self.xgb_model.predict(X))  # type: ignore[union-attr]
+        p_rf  = np.expm1(self.rf_model.predict(X))   # type: ignore[union-attr]
         est = (p_xgb + p_rf) / 2
 
         out = df.copy()

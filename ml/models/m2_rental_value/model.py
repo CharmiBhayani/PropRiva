@@ -43,9 +43,9 @@ class M2RentalValueModel:
     """Random Forest and XGBoost ensemble for Mumbai rental value estimation (Model M2)."""
 
     def __init__(self):
-        self.xgb_model: Optional[xgb.XGBRegressor] = None
-        self.rf_model:  Optional[RandomForestRegressor] = None
-        self.preprocessor: Optional[MumbaiFeaturePreprocessor] = None
+        self.xgb_model = None
+        self.rf_model = None
+        self.preprocessor = None
         self.feature_cols: list[str] = [
             "PROPERTY_TYPE_enc", "CITY_enc", "BEDROOM_NUM", "FURNISH", 
             "AGE", "TOTAL_FLOOR", "AREA", "BALCONY_NUM", "FLOOR_NUM"
@@ -138,10 +138,7 @@ class M2RentalValueModel:
             RentalPrediction object.
         """
         assert self.is_fitted
-        assert self.preprocessor is not None
-        assert self.xgb_model is not None
-        assert self.rf_model is not None
-        
+
         # Map input keys to Mumbai uppercase names
         mapped = {}
         for k, v in property_features.items():
@@ -154,11 +151,11 @@ class M2RentalValueModel:
 
         # Transform using preprocessor
         df_input = pd.DataFrame([mapped])
-        df_proc = self.preprocessor.transform(df_input)
+        df_proc = self.preprocessor.transform(df_input)  # type: ignore[union-attr]
         X = df_proc[self.feature_cols].values.astype(np.float32)
 
-        p_xgb = float(np.expm1(self.xgb_model.predict(X)[0]))
-        p_rf = float(np.expm1(self.rf_model.predict(X)[0]))
+        p_xgb = float(np.expm1(self.xgb_model.predict(X)[0]))  # type: ignore[union-attr]
+        p_rf  = float(np.expm1(self.rf_model.predict(X)[0]))   # type: ignore[union-attr]
         rent = (p_xgb + p_rf) / 2
 
         gross_yield = 0.0
@@ -177,20 +174,17 @@ class M2RentalValueModel:
     def predict_batch(self, df: pd.DataFrame) -> pd.DataFrame:
         """Batch predicts rents; returns df with prediction columns."""
         assert self.is_fitted
-        assert self.preprocessor is not None
-        assert self.xgb_model is not None
-        assert self.rf_model is not None
-        
+
         # Rename columns if needed
         df_mapped = df.rename(columns=API_TO_MUMBAI_MAP)
         if "AGE" not in df_mapped.columns and "year_built" in df.columns:
             df_mapped["AGE"] = 2026 - df["year_built"]
             
-        df_proc = self.preprocessor.transform(df_mapped)
+        df_proc = self.preprocessor.transform(df_mapped)  # type: ignore[union-attr]
         X = df_proc[self.feature_cols].values.astype(np.float32)
         
-        p_xgb = np.expm1(self.xgb_model.predict(X))
-        p_rf = np.expm1(self.rf_model.predict(X))
+        p_xgb = np.expm1(self.xgb_model.predict(X))  # type: ignore[union-attr]
+        p_rf  = np.expm1(self.rf_model.predict(X))   # type: ignore[union-attr]
         rent = (p_xgb + p_rf) / 2
 
         out = df.copy()

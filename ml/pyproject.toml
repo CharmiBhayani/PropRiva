@@ -4,17 +4,6 @@ version = "0.1.0"
 description = "PropRiva ML pipeline — Mumbai property analytics"
 requires-python = ">=3.11"
 
-[tool.pyright]
-pythonVersion = "3.11"
-venvPath = "."
-venv = ".venv"
-extraPaths = ["."]
-typeCheckingMode = "basic"
-reportMissingModuleSource = "none"
-reportMissingImports = "none"
-reportGeneralTypeIssues = "none"
-reportUndefinedVariable = "warning"
-
 [tool.ruff]
 line-length = 100
 target-version = "py311"
